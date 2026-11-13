@@ -12,3 +12,5 @@ data/
 # 비밀 값
 .env
 .env.*
+
+.vercel
