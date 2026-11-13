@@ -1,25 +1,24 @@
-"""보험심사팀 데이터 저장 (DB 없이 파일로).
+"""보험심사팀 데이터 저장 (방문자별 저장소 kv.py).
 
-data/audit/
-  agents.json            전문가 Agent 목록 (이름, 역할, 성격 프롬프트, 색)
-  settings.json          {"mesh": true}  Full-Mesh 켜기/끄기
-  cases/{id}.json        사건(대화): 제목, 상태(진행 중/완료/보류), 차례별 질문·결론·기록, Agent별 사건 기억
-  docs/{agent}/orig/     Agent별 참조 문서 원본
-  docs/{agent}/text/     Agent가 읽는 텍스트 (PDF는 글자만 뽑아 둔다)
+audit:agents          전문가 Agent 목록 (이름, 역할, 성격 프롬프트, 색)
+audit:settings        {"mesh": true}  Full-Mesh 켜기/끄기
+audit:case:{id}       사건(대화): 제목, 상태(진행 중/완료/보류), 차례별 질문·결론·기록, Agent별 사건 기억
+audit:caseidx         사건 목록용 요약 (해시: 사건 id → 제목, 상태, 시간)
+audit:docmeta:{agent} Agent별 참조 문서 목록 (해시: 문서 이름 → 크기, 글자 수)
+audit:doctext:{agent} Agent별 참조 문서 본문 (해시: 문서 이름 → 글자만 뽑은 텍스트)
+
+참조 문서는 원본 파일이 아니라 읽을 수 있는 글자만 저장한다 (PDF는 글자를 뽑아 둔다).
 """
+import copy
 import io
 import json
 import re
-import shutil
 import time
 import uuid
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent / "data" / "audit"
-CASES = ROOT / "cases"
-DOCS = ROOT / "docs"
-for d in (CASES, DOCS):
-    d.mkdir(parents=True, exist_ok=True)
+import kv
+from kv import LimitError
 
 DEFAULT_AGENTS = [
     {"id": "legal", "name": "법률", "role": "약관·법적 근거 검토", "color": "#2B9BFF",
@@ -35,16 +34,16 @@ DEFAULT_AGENTS = [
                "- 손해율, 비용, 유사 사례로 번질 위험, 회사의 지속 가능성과 평판을 중요하게 봅니다.\n"
                "- 회사가 감당할 수 있는 현실적인 대안(한도, 자기부담금, 상품 설계 등)을 제안합니다."},
 ]
+DEFAULT_IDS = frozenset(a["id"] for a in DEFAULT_AGENTS)
 COLORS = ["#2B9BFF", "#E0218A", "#00A86B", "#FF5A2E", "#7A6FA8", "#00B5C8", "#C98A00"]
 STATUSES = ["진행 중", "완료", "보류"]
 
-
-def _read(p: Path, default):
-    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else default
-
-
-def _write(p: Path, data):
-    p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+# 사용 한도 (공개 서버에서 저장소가 가득 차지 않게)
+MAX_AGENTS = 8
+MAX_DOCS_PER_AGENT = 5
+MAX_CASES = 30
+MAX_UPLOAD = 4 * 1024 * 1024        # Vercel 요청 본문 한도(4.5MB) 아래
+MAX_DOC_TEXT = 600_000              # 문서 하나에서 읽을 최대 글자 수
 
 
 def _safe_id(s: str) -> str:
@@ -55,14 +54,15 @@ def _safe_id(s: str) -> str:
 
 # ── 전문가 Agent
 def load_agents() -> list[dict]:
-    p = ROOT / "agents.json"
-    if not p.exists():
-        _write(p, DEFAULT_AGENTS)
-    return _read(p, [])
+    items = kv.get_json(kv.vk("audit:agents"))
+    if items is None:
+        items = copy.deepcopy(DEFAULT_AGENTS)  # 복사해서 쓴다 (원본을 고치면 다른 방문자에게도 보인다)
+        save_agents(items)
+    return items
 
 
 def save_agents(items: list[dict]):
-    _write(ROOT / "agents.json", items)
+    kv.set_json(kv.vk("audit:agents"), items)
 
 
 def get_agent(aid: str) -> dict:
@@ -78,6 +78,8 @@ def upsert_agent(aid: str | None, name: str, role: str, prompt: str) -> dict:
         a = next(a for a in items if a["id"] == aid)
         a.update(name=name, role=role, prompt=prompt)
     else:
+        if len(items) >= MAX_AGENTS:
+            raise LimitError(f"전문가는 {MAX_AGENTS}명까지 둘 수 있어요. 안 쓰는 전문가를 삭제해 주세요.")
         a = {"id": "a" + uuid.uuid4().hex[:8], "name": name, "role": role, "prompt": prompt,
              "color": COLORS[len(items) % len(COLORS)]}
         items.append(a)
@@ -87,58 +89,47 @@ def upsert_agent(aid: str | None, name: str, role: str, prompt: str) -> dict:
 
 def delete_agent(aid: str):
     save_agents([a for a in load_agents() if a["id"] != aid])
-    shutil.rmtree(DOCS / _safe_id(aid), ignore_errors=True)
+    kv.delete(kv.vk(f"audit:docmeta:{_safe_id(aid)}"), kv.vk(f"audit:doctext:{aid}"))
 
 
 # ── 설정
 def load_settings() -> dict:
-    return {"mesh": True, **_read(ROOT / "settings.json", {})}
+    return {"mesh": True, **(kv.get_json(kv.vk("audit:settings")) or {})}
 
 
 def save_settings(**kw) -> dict:
     s = {**load_settings(), **kw}
-    _write(ROOT / "settings.json", s)
+    kv.set_json(kv.vk("audit:settings"), s)
     return s
 
 
 # ── 참조 문서
-MAX_DOC = 15 * 1024 * 1024
-ALLOWED = {".pdf", ".txt", ".md"}
-
-
-def _doc_dirs(aid: str) -> tuple[Path, Path]:
-    base = DOCS / _safe_id(aid)
-    return base / "orig", base / "text"
-
-
-def doc_root(aid: str) -> Path:
-    t = _doc_dirs(aid)[1]
-    t.mkdir(parents=True, exist_ok=True)
-    return t
-
-
-def list_docs(aid: str) -> list[dict]:
-    orig, text = _doc_dirs(aid)
-    out = []
-    for f in sorted(orig.glob("*")) if orig.exists() else []:
-        t = text / (f.name + ".txt")
-        out.append({"name": f.name, "size": f.stat().st_size, "chars": len(t.read_text(encoding="utf-8")) if t.exists() else 0})
-    return out
-
-
 def safe_filename(name: str) -> str:
     name = Path(name or "문서").name
     name = re.sub(r"[\\/:*?\"<>|\x00-\x1f]", "_", name).strip(" .")[:80]
     return name or "문서"
 
 
+def list_docs(aid: str) -> list[dict]:
+    meta = kv.hgetall(kv.vk(f"audit:docmeta:{_safe_id(aid)}"))
+    return [{"name": n, **json.loads(m)} for n, m in sorted(meta.items())]
+
+
+def docs_text(aid: str) -> dict[str, str]:
+    """문서 이름 → 본문 (Agent가 read_file로 읽을 내용)"""
+    return kv.hgetall(kv.vk(f"audit:doctext:{_safe_id(aid)}"))
+
+
 def add_doc(aid: str, filename: str, data: bytes) -> dict:
     name = safe_filename(filename)
     ext = Path(name).suffix.lower()
-    if ext not in ALLOWED:
+    if ext not in {".pdf", ".txt", ".md"}:
         raise ValueError("PDF, txt, md 파일만 올릴 수 있어요.")
-    if len(data) > MAX_DOC:
-        raise ValueError("파일이 너무 커요. 15MB 이하로 올려 주세요.")
+    if len(data) > MAX_UPLOAD:
+        raise ValueError("파일이 너무 커요. 4MB 이하로 올려 주세요.")
+    existing = {d["name"] for d in list_docs(aid)}
+    if name not in existing and len(existing) >= MAX_DOCS_PER_AGENT:
+        raise LimitError(f"전문가 한 명에게 문서는 {MAX_DOCS_PER_AGENT}개까지 올릴 수 있어요. 안 쓰는 문서를 삭제해 주세요.")
     if ext == ".pdf":
         from pypdf import PdfReader
         try:
@@ -150,55 +141,58 @@ def add_doc(aid: str, filename: str, data: bytes) -> dict:
         text = data.decode("utf-8", errors="replace")
     if not text.strip():
         raise ValueError("문서에서 글자를 찾지 못했어요. 스캔한 이미지 PDF는 읽을 수 없어요.")
-    orig, tdir = _doc_dirs(aid)
-    orig.mkdir(parents=True, exist_ok=True)
-    tdir.mkdir(parents=True, exist_ok=True)
-    (orig / name).write_bytes(data)
-    (tdir / (name + ".txt")).write_text(text, encoding="utf-8")
-    return {"name": name, "size": len(data), "chars": len(text)}
+    cut = len(text) > MAX_DOC_TEXT
+    text = text[:MAX_DOC_TEXT]
+    kv.hset(kv.vk(f"audit:doctext:{aid}"), {name: text})
+    meta = {"size": len(data), "chars": len(text), "truncated": cut}
+    kv.hset(kv.vk(f"audit:docmeta:{aid}"), {name: json.dumps(meta)})
+    return {"name": name, **meta}
 
 
 def delete_doc(aid: str, name: str):
-    orig, text = _doc_dirs(aid)
     name = safe_filename(name)
-    (orig / name).unlink(missing_ok=True)
-    (text / (name + ".txt")).unlink(missing_ok=True)
+    kv.hdel(kv.vk(f"audit:docmeta:{_safe_id(aid)}"), name)
+    kv.hdel(kv.vk(f"audit:doctext:{aid}"), name)
 
 
-def doc_path(aid: str, name: str) -> Path:
-    p = _doc_dirs(aid)[0] / safe_filename(name)
-    if not p.exists():
+def doc_text(aid: str, name: str) -> str:
+    t = kv.hget(kv.vk(f"audit:doctext:{_safe_id(aid)}"), safe_filename(name))
+    if t is None:
         raise KeyError("문서를 찾을 수 없습니다.")
-    return p
+    return t
 
 
 # ── 사건(대화)
+def _meta(c: dict) -> dict:
+    return {"title": c["title"], "status": c["status"], "created": c["created"], "updated": c["updated"], "turns": len(c.get("turns", []))}
+
+
 def list_cases() -> list[dict]:
-    out = []
-    for f in CASES.glob("*.json"):
-        c = _read(f, {})
-        out.append({k: c.get(k) for k in ("id", "title", "status", "created", "updated")} | {"turns": len(c.get("turns", []))})
-    return sorted(out, key=lambda c: c["updated"] or 0, reverse=True)
+    rows = [{"id": cid, **json.loads(m)} for cid, m in kv.hgetall(kv.vk("audit:caseidx")).items()]
+    return sorted(rows, key=lambda c: c["updated"] or 0, reverse=True)
 
 
 def new_case() -> dict:
+    if len(kv.hgetall(kv.vk("audit:caseidx"))) >= MAX_CASES:
+        raise LimitError(f"사건은 {MAX_CASES}개까지 둘 수 있어요. 끝난 사건을 삭제해 주세요.")
     now = time.time()
     c = {"id": uuid.uuid4().hex[:12], "title": "새 사건", "status": "진행 중", "created": now, "updated": now,
          "turns": [], "memory": {}, "orch_history": []}
-    _write(CASES / f"{c['id']}.json", c)
+    save_case(c)
     return c
 
 
 def load_case(cid: str) -> dict:
-    p = CASES / f"{_safe_id(cid)}.json"
-    if not p.exists():
+    c = kv.get_json(kv.vk(f"audit:case:{_safe_id(cid)}"))
+    if c is None:
         raise KeyError("사건을 찾을 수 없습니다.")
-    return _read(p, {})
+    return c
 
 
 def save_case(c: dict):
     c["updated"] = time.time()
-    _write(CASES / f"{_safe_id(c['id'])}.json", c)
+    kv.set_json(kv.vk(f"audit:case:{_safe_id(c['id'])}"), c)
+    kv.hset(kv.vk("audit:caseidx"), {c["id"]: json.dumps(_meta(c), ensure_ascii=False)})
 
 
 def update_case(cid: str, **kw) -> dict:
@@ -211,4 +205,5 @@ def update_case(cid: str, **kw) -> dict:
 
 
 def delete_case(cid: str):
-    (CASES / f"{_safe_id(cid)}.json").unlink(missing_ok=True)
+    kv.delete(kv.vk(f"audit:case:{_safe_id(cid)}"))
+    kv.hdel(kv.vk("audit:caseidx"), cid)

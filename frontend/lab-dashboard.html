@@ -166,8 +166,12 @@ $('#loadSamples').onclick = async () => {
   } catch (e) { showError(e); }
 };
 function addFiles(fl) {
-  [...fl].filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf').forEach(f => addItem({ name: f.name, file: f }));
+  const big = [];
+  [...fl].filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf').forEach(f => {
+    if (f.size > App.MAX_UPLOAD) big.push(f.name); else addItem({ name: f.name, file: f });
+  });
   drawFiles();
+  if (big.length) showError({ message: `4MB를 넘는 PDF는 올릴 수 없어요: ${big.join(', ')}`, detail: '파일 크기를 줄여서 다시 올려 주세요.' });
 }
 $('#pick').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
 const drop = $('#drop');

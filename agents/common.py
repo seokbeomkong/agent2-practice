@@ -63,7 +63,10 @@ def detail(agent: str, title: str, text: str, kind: str = "out"):
 def friendly_error(e: BaseException) -> tuple[str, str]:
     """예외를 (화면에 보여 줄 문장, 상세 내용)으로 바꾼다."""
     import anthropic
+    import kv
     from claude_api import HINTS
+    if isinstance(e, kv.StoreError):
+        return e.message, e.detail
     while isinstance(e, BaseExceptionGroup) and e.exceptions:  # TaskGroup이 감싼 예외 풀기
         e = e.exceptions[0]
     if isinstance(e, anthropic.APIStatusError):

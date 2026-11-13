@@ -95,7 +95,7 @@ let personas = [], cur = null, chatId = null, busy = false, editing = null;
 const TOOL_KO = { get_current_time: '현재 시각 확인', create_html: 'HTML 문서 만들기', install_skill: 'Skill 설치', manage_skills: 'Skill 관리',
   edit_file: '파일 수정', write_file: '파일 쓰기', read_file: '파일 읽기', ls: '폴더 보기', glob: '파일 찾기', grep: '내용 찾기', write_todos: '할 일 정리', task: 'Subagent 호출' };
 // 답변 속 문서 링크를 누를 수 있게 바꾼다
-const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(\/api\/persona\/html\/[a-f0-9]+\.html)/g, '<a href="$1" target="_blank" rel="noopener">문서 열기</a>');
+const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(\/api\/persona\/html\/[a-f0-9]+\.html\?v=[A-Za-z0-9_-]+)/g, '<a href="$1" target="_blank" rel="noopener">문서 열기</a>');
 
 async function loadPersonas(selectId) {
   personas = await (await api('/api/persona/personas')).json();

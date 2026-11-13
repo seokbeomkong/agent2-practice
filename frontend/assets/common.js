@@ -97,8 +97,20 @@
 
   // 백엔드 API 호출: 키를 헤더로 붙이고, 실패하면 {error, detail}을 담은 Error를 던진다.
   class ApiError extends Error { constructor(msg, detail) { super(msg); this.detail = detail || ''; } }
+  // 방문자 번호: 이 브라우저를 구분하는 랜덤 번호. 캐릭터, 채팅, 사건, 문서가 이 번호별로 따로 저장된다.
+  const visitorId = (() => {
+    try {
+      let v = localStorage.getItem('visitorId');
+      if (!v || !/^[A-Za-z0-9_-]{16,64}$/.test(v)) {
+        v = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, '');
+        localStorage.setItem('visitorId', v);
+      }
+      return v;
+    } catch { return 'anon' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
+  })();
+  const MAX_UPLOAD = 4 * 1024 * 1024;   // 서버 요청 본문 한도(약 4.5MB)에 맞춘 파일 크기 한도
   async function api(path, { json, form, method } = {}) {
-    const headers = { 'X-Claude-Key': store.get('apiKey') };
+    const headers = { 'X-Claude-Key': store.get('apiKey'), 'X-Visitor-Id': visitorId };
     let body;
     if (json) { headers['content-type'] = 'application/json'; body = JSON.stringify(json); }
     if (form) body = form;
@@ -124,5 +136,5 @@
     }
   }
 
-  window.App = { api, readSSE, ApiError, store, hasAccess, maskKey, thumbs, LABS, sleep, $, esc, nowTime, typeInto, mountBar, mountHead };
+  window.App = { visitorId, MAX_UPLOAD, api, readSSE, ApiError, store, hasAccess, maskKey, thumbs, LABS, sleep, $, esc, nowTime, typeInto, mountBar, mountHead };
 })();

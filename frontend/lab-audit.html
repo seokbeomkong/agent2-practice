@@ -375,9 +375,9 @@ function drawManage(msg = '', cls = '') {
     <div class="acts"><button type="button" class="btn blue" id="fSave">${isNew ? '추가' : '저장'}</button>${isNew ? '' : '<button type="button" class="btn danger" id="fDel">삭제</button>'}</div>
     <p class="msgline ${cls}" id="fMsg">${esc(msg)}</p>
     <div style="border-top:2px solid var(--ink);padding-top:14px;display:grid;gap:10px">
-      <b>참조 문서</b><span class="help" style="font-size:13px;color:var(--muted)">약관, 내부 규정, 판례 요약 같은 문서를 올리면 이 전문가가 읽고 근거로 답해요. PDF, txt, md (15MB 이하)</span>
+      <b>참조 문서</b><span class="help" style="font-size:13px;color:var(--muted)">약관, 내부 규정, 판례 요약 같은 문서를 올리면 이 전문가가 읽고 근거로 답해요. PDF, txt, md (4MB 이하, 전문가당 5개까지). 문서에서 글자만 뽑아 저장해요.</span>
       ${isNew ? '<p class="help" style="font-size:13px;color:var(--muted)">전문가를 먼저 추가하면 문서를 올릴 수 있어요.</p>' : `
-      <ul class="docs">${(a.docs || []).map(d => `<li><a href="/api/audit/agents/${a.id}/docs/${encodeURIComponent(d.name)}" target="_blank" rel="noopener">${esc(d.name)}</a><small>${(d.size / 1024).toFixed(0)}KB, ${d.chars.toLocaleString()}자</small><button type="button" data-doc="${esc(d.name)}">삭제</button></li>`).join('') || '<li style="border-style:dashed;color:var(--muted)">아직 올린 문서가 없어요.</li>'}</ul>
+      <ul class="docs">${(a.docs || []).map(d => `<li><a href="/api/audit/agents/${a.id}/docs/${encodeURIComponent(d.name)}?v=${App.visitorId}" target="_blank" rel="noopener" title="Agent가 읽는 글자 보기">${esc(d.name)}</a><small>${(d.size / 1024).toFixed(0)}KB, ${d.chars.toLocaleString()}자${d.truncated ? ', 앞부분만' : ''}</small><button type="button" data-doc="${esc(d.name)}">삭제</button></li>`).join('') || '<li style="border-style:dashed;color:var(--muted)">아직 올린 문서가 없어요.</li>'}</ul>
       <label class="up" id="up">여기로 끌어다 놓거나 눌러서 파일 선택<input type="file" id="fFile" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple class="sr"></label>`}
     </div>`;
   $('#fSave').onclick = saveAgent;
@@ -408,6 +408,7 @@ async function deleteAgent() {
 async function uploadDocs(files) {
   let ok = 0, errs = [];
   for (const f of files) {
+    if (f.size > App.MAX_UPLOAD) { errs.push(`${f.name}: 4MB를 넘어요`); continue; }
     const fd = new FormData(); fd.append('file', f);
     try { await api(`/api/audit/agents/${editId}/docs`, { form: fd }); ok++; } catch (e) { errs.push(`${f.name}: ${e.message}`); }
   }

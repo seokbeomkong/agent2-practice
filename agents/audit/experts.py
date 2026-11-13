@@ -12,6 +12,9 @@ Full-Mesh가 꺼져 있으면(Supervisor 구조) 전문가는 자기 의견만 �
 """
 import asyncio
 import contextvars
+import shutil
+import tempfile
+from pathlib import Path
 
 from deepagents import FilesystemPermission, create_deep_agent
 from deepagents.backends import FilesystemBackend
@@ -35,19 +38,27 @@ last_positions: contextvars.ContextVar[dict] = contextvars.ContextVar("positions
 LIVE_CASES: dict[str, dict] = {}  # 실행 중인 사건 (A2A 작업자는 별도 작업이라 사건 번호로 찾아 쓴다)
 
 
+current_team: contextvars.ContextVar[dict] = contextvars.ContextVar("team")  # 이번 실행에서 읽은 전문가 목록 (저장소를 매번 읽지 않도록)
+
+
 def experts() -> dict[str, dict]:
-    return {a["id"]: a for a in store.load_agents()}
+    """현재 방문자의 전문가 목록 (한 실행 안에서는 한 번만 저장소에서 읽는다)."""
+    try:
+        return current_team.get()
+    except LookupError:
+        team = {a["id"]: a for a in store.load_agents()}
+        current_team.set(team)
+        return team
 
 
 def _memory(case: dict, agent: str) -> list[str]:
     return case.setdefault("memory", {}).setdefault(agent, [])
 
 
-def _docs_prompt(aid: str) -> str:
-    docs = store.list_docs(aid)
+def _docs_prompt(docs: dict[str, str]) -> str:
     if not docs:
         return ""
-    names = "\n".join(f"- /{d['name']}.txt" for d in docs)
+    names = "\n".join(f"- /{n}.txt" for n in docs)
     return ("\n\n[참조 문서]\n당신에게 배정된 참조 문서입니다. 사건과 관련 있으면 read_file 도구로 읽고, "
             f"답변에 근거로 쓴 문서 이름을 밝히세요.\n{names}")
 
@@ -76,19 +87,25 @@ def _ask_peer_tool(me: str, requester: str, case: dict) -> StructuredTool:
 async def run_expert(agent: str, text: str, case: dict, hop: int, requester: str = "", title: str = "받은 요청") -> str:
     """전문가 Agent를 실행한다. 이 사건에서 자기가 했던 말과 참조 문서를 함께 준다."""
     spec, mem = experts()[agent], _memory(case, agent)
-    system = spec["prompt"] + RULES + _docs_prompt(agent)
+    docs = store.docs_text(agent)
+    system = spec["prompt"] + RULES + _docs_prompt(docs)
     if mem:
         system += "\n\n[이 사건에서 지금까지 당신이 한 말]\n" + "\n---\n".join(mem[-6:])
     tools = [_ask_peer_tool(agent, requester, case)] if hop == 1 and len(experts()) > 2 else []
     detail(agent, title, text, "in")
     emit("status", agent=agent, state="working")
+    # 참조 문서를 이 실행 동안만 임시 폴더에 펼쳐 둔다 (Agent가 read_file로 읽는다)
+    ws = Path(tempfile.mkdtemp(prefix="audit-docs-"))
     try:
+        for name, body in docs.items():
+            (ws / f"{name}.txt").write_text(body, encoding="utf-8")
         deep = create_deep_agent(
             model=make_model(current_key.get(), max_tokens=2048), tools=tools, system_prompt=system,
-            backend=FilesystemBackend(root_dir=store.doc_root(agent), virtual_mode=True),
+            backend=FilesystemBackend(root_dir=ws, virtual_mode=True),
             permissions=[FilesystemPermission(operations=["write"], paths=["/**"], mode="deny")])  # 문서는 읽기만
         reply = final_text(await deep.ainvoke({"messages": [{"role": "user", "content": text}]}))
     finally:
+        shutil.rmtree(ws, ignore_errors=True)
         emit("status", agent=agent, state="idle")
     mem.append(short(reply, 600))
     return reply
@@ -108,7 +125,16 @@ def register(agent_id: str):
                        lambda text, meta, hist, _a=agent_id: _a2a_handler(_a, text, meta, hist))
 
 
-def register_all():
+def register_defaults():
+    """기본 전문가(법률·고객·경영)의 A2A 서버는 서버가 켜질 때 등록한다."""
+    for a in store.DEFAULT_AGENTS:
+        if a["id"] not in a2a.APPS:
+            a2a.register_agent(a["id"], f"{a['name']} 전문가: {a['role']}",
+                               lambda text, meta, hist, _a=a["id"]: _a2a_handler(_a, text, meta, hist))
+
+
+def ensure_registered():
+    """이 방문자의 전문가 중 A2A 서버가 아직 없는 것(직접 추가한 전문가)을 등록한다."""
     for aid in experts():
         if aid not in a2a.APPS:
             register(aid)

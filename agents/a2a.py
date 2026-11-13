@@ -20,6 +20,7 @@ from fasta2a.broker import InMemoryBroker
 from fasta2a.client import A2AClient
 from fasta2a.storage import InMemoryStorage
 
+import kv
 from agents.common import RUNS, current_bus, current_key, emit, short
 
 STATE_KO = {"submitted": "접수됨", "working": "작업 중", "completed": "완료", "failed": "실패"}
@@ -53,6 +54,7 @@ class AgentWorker(Worker[list]):
         bus = RUNS.get(meta.get("run_id", ""))
         current_bus.set(bus)
         current_key.set(meta.get("api_key", ""))
+        kv.current_visitor.set(meta.get("visitor", ""))  # 요청한 방문자의 데이터(전문가 목록 등)를 읽기 위해
         await self.storage.update_task(task_id, state="working")
         text = "".join(p.get("text", "") for p in params["message"]["parts"])
         history = await self.storage.load_context(ctx_id) or []
@@ -214,7 +216,7 @@ async def ask(name: str, sender: str, text: str, context_id: str, **meta) -> str
     run_id = bus.id if bus else ""
     if (run_id, sender, name) not in _cards:
         _cards[(run_id, sender, name)] = await get_agent_card(name, sender)   # ①
-    metadata = {"run_id": run_id, "api_key": current_key.get(), "from": sender, **meta}
+    metadata = {"run_id": run_id, "api_key": current_key.get(), "visitor": kv.current_visitor.get(), "from": sender, **meta}
     task_id = await send_message(name, sender, text, context_id, metadata)   # ②
     task = await wait_for_task(name, sender, task_id)                        # ③
     return get_artifact(name, sender, task)                                  # ④

@@ -43,14 +43,18 @@ CH1(환경 설정), CH2(Agent View 병렬 개발)는 도구 사용법 중심이�
 
 ## 현재 진행 상황
 
-- 배포 플랫폼(Vercel, Hostinger 등)은 미정이다. 우선 로컬에서 테스트하는 것을 목표로 한다.
+- 배포: **Vercel**(무료 Hobby)에 올린다. 서버리스라 요청마다 다른 인스턴스에서 실행되고 파일이 남지 않으므로, 사용자 데이터는 모두 `kv.py`의 저장소(배포: Upstash Redis, 로컬: `data/store.json`)에 둔다.
+  - 방문자 구분: 브라우저가 만든 랜덤 번호(`visitorId`, localStorage)를 `X-Visitor-Id` 헤더(문서/HTML 링크는 `?v=`)로 보내고, 저장소 키는 `u:{방문자}:...`로 분리한다. 마지막 쓴 뒤 30일이면 사라진다.
+  - Vercel 한도에 맞춘 규칙: 함수 최대 300초(`vercel.json`), 요청 본문 4.5MB → 업로드 4MB 이하, 쓰기 가능한 곳은 임시 폴더뿐(Deep Agents 파일 공간은 실행 중에만 임시 폴더에 펼치고 끝나면 저장소로 되돌림), SSE는 15초마다 ping.
+  - 사용 한도(공개 서버 보호): 캐릭터 12, 전문가 8, 전문가당 문서 5개·문서당 글자 60만자, 사건 30, 설치 Skill 1.5MB.
+  - 환경변수: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (마켓플레이스 연동 시 `KV_REST_API_URL/TOKEN` 이름도 인식). Vercel에서 저장소가 없으면 파일에 몰래 저장하지 않고 안내 오류를 낸다. 확인: `/api/health`
 - 디자인은 **팝 스티커**(라벤더 배경, 굵은 검정 테두리, 평평한 그림자, Black Han Sans + Noto Sans KR)로 확정했다. 색과 모양은 `frontend/assets/common.css` 상단의 토큰으로 관리한다.
 - 흐름: 접속 → API 키 입력·연결 테스트(`/api/key-test`) → 통과해야만 실습 목록 → 실습 화면. 키는 브라우저 `sessionStorage`에만 두고 요청마다 `X-Claude-Key` 헤더로 보낸다. 서버는 저장·로그하지 않는다.
 - 실습 4개 모두 실제 Claude로 동작한다 (모델 `claude-sonnet-5-5`, effort `medium`)
   - CH3 불량 리포트 분석: HTTP 직접 호출(교안 지침: Anthropic SDK 미사용), PDF → 구조화 추출 → 요약 → Dashboard → 스트리밍 챗봇
-  - CH4 페르소나 챗봇: Deep Agents. Tool(시각, HTML 생성, Skill 설치/관리), Skill(`data/persona/ws/skills`), 캐릭터별 Memory(AGENTS.md), 채팅 기록 txt, 사고 과정 실시간 표시
+  - CH4 페르소나 챗봇: Deep Agents. Tool(시각, HTML 생성, Skill 설치/관리), Skill, 캐릭터별 Memory(AGENTS.md), 채팅 기록, 사고 과정 실시간 표시 (모두 방문자별 저장소에 저장)
   - CH4 Orchestration: Orchestrator → Latte(Subagent) → Cat(MCP + Tool) → Emoji(Tool) ↔ Feedback(A2A, 재시도 최대 3번)
-  - CH5 보험심사팀: 완전한 Full-Mesh(사람 → Orchestrator → 모든 전문가 Tool, 전문가끼리 모두 A2A). 부른 전문가가 다른 모든 전문가와 A2A로 최대 2번 조율(모두 동의 시 종료), 피드백 중 ask_peer로 직접 질의. Full-Mesh 끄기 시 Supervisor 구조. 사건별 대화(새 사건/목록/상태: 진행 중·완료·보류, 사건별 Agent 기억 저장), 전문가 추가/수정/삭제(실행 중 A2A 서버 동적 등록), 전문가별 참조 문서(PDF/txt/md) 업로드/삭제 후 read_file로 읽고 답변, 답변 10줄 이내
+  - CH5 보험심사팀: 완전한 Full-Mesh(사람 → Orchestrator → 모든 전문가 Tool, 전문가끼리 모두 A2A). 부른 전문가가 다른 모든 전문가와 A2A로 최대 2번 조율(모두 동의 시 종료), 피드백 중 ask_peer로 직접 질의. Full-Mesh 끄기 시 Supervisor 구조. 사건별 대화(새 사건/목록/상태: 진행 중·완료·보류, 사건별 Agent 기억 저장), 전문가 추가/수정/삭제(실행 중 A2A 서버 동적 등록), 전문가별 참조 문서(PDF/txt/md, 글자만 뽑아 저장) 업로드/삭제 후 read_file로 읽고 답변, 답변 10줄 이내
 - 그래프 화면은 서버가 보낸 nodes/links(`/api/orchestra/graph`, `/api/audit/graph`)로만 그리고, 실행 이벤트(SSE)를 순서대로 재생한다.
 - 노드를 클릭하면 그 Agent가 받은 요청·결과 전체가 팝업으로 열리고, 다시 클릭하면 닫힌다(`detail` 이벤트). 자동 말풍선은 쓰지 않는다.
 - Orchestration 앱은 Latte/Cat/Emoji/Feedback을 켜고 끌 수 있다(꺼진 Agent는 서버에서도 빠짐, Emoji를 끄면 Feedback도 꺼짐).
@@ -64,15 +68,17 @@ CH1(환경 설정), CH2(Agent View 병렬 개발)는 도구 사용법 중심이�
 
 ## 파일 구조
 
-- `app.py`: FastAPI. `/api/*`, A2A 서버(`/agents/{이름}`), MCP 서버(`/mcp-server`), `frontend/` 화면을 함께 제공
+- `app.py`: FastAPI. `/api/*`, A2A 서버(`/agents/{이름}`), MCP 서버(`/mcp-server`), `frontend/` 화면을 함께 제공 (Vercel도 이 파일의 `app`을 실행)
+- `kv.py`: 방문자별 키-값 저장소 (Upstash Redis REST / 로컬 파일), 한도·저장소 오류 정의
+- `vercel.json`, `.python-version`: Vercel 설정 (함수 300초, Python 3.12)
 - `claude_api.py`: CH3용 Claude API HTTP 호출 도우미 (refusal fallback `fallbacks: "default"` 사용)
 - `labs/dashboard.py`: CH3 프롬프트·JSON 스키마·분석/요약/챗봇
-- `labs/persona.py`: CH4 페르소나 챗봇 (Tool, Skill, Memory, txt 채팅 기록)
+- `labs/persona.py`: CH4 페르소나 챗봇 (Tool, Skill, Memory, 채팅 기록)
 - `agents/common.py`: 모델 생성, 실행 이벤트 버스(SSE), 오류 문구
 - `agents/a2a.py`: FastA2A 서버 등록과 A2A 4단계 함수
 - `agents/orchestra/`: `orchestrator.py`, `latte_agent.py`, `cat_agent.py`(MCP), `emoji_agent.py`, `feedback_agent.py`
-- `agents/audit/`: `orchestrator.py`(그래프·실행), `experts.py`(전문가 실행·Full-Mesh 조율·참조 문서·A2A 등록), `store.py`(Agent·설정·사건·문서 파일 저장)
-- `data/persona/`, `data/audit/`: 실행 데이터 (자동 생성, 지우면 기본 캐릭터·기본 전문가 3명으로 다시 만들어짐)
+- `agents/audit/`: `orchestrator.py`(그래프·실행), `experts.py`(전문가 실행·Full-Mesh 조율·참조 문서·A2A 등록), `store.py`(Agent·설정·사건·문서 저장)
+- `data/store.json`: 로컬 실행 때만 생기는 저장 파일 (지우면 기본 캐릭터·기본 전문가 3명으로 다시 시작)
 - `sample_reports/`: 교안 UNIT 2 형식의 2페이지 불량 리포트 PDF 5건 (`scripts/make_reports.py`로 생성)
 - `frontend/`: `index.html`(키 입력), `gallery.html`(실습 목록), `lab-*.html`(실습), `assets/common.css`, `assets/common.js`, `assets/graph.js`(Agent 그래프)
 
@@ -80,7 +86,7 @@ CH1(환경 설정), CH2(Agent View 병렬 개발)는 도구 사용법 중심이�
 
 ```
 py -3.12 -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install -r requirements.txt   (샘플 PDF를 다시 만들 때만 requirements-dev.txt)
 .venv\Scripts\python.exe -m uvicorn app:app --port 8000
 ```
 접속: http://localhost:8000 (Python 3.13이 없어 3.12 가상환경을 사용 중)

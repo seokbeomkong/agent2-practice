@@ -1,20 +1,23 @@
 """FastAPI 서버: API와 프론트엔드 화면(frontend/)을 함께 제공한다.
 
-실행: .venv\\Scripts\\python.exe -m uvicorn app:app --port 8000
-접속: http://localhost:8000
+로컬 실행: .venv\\Scripts\\python.exe -m uvicorn app:app --port 8000   (접속: http://localhost:8000)
+배포: Vercel (루트의 app.py에서 `app`을 찾아 실행한다. vercel.json 참고)
 
-API 키는 브라우저가 요청마다 X-Claude-Key 헤더로 보내고, 서버는 저장하지 않는다.
+- API 키는 브라우저가 요청마다 X-Claude-Key 헤더로 보내고, 서버는 저장하지 않는다.
+- 방문자(브라우저)마다 X-Visitor-Id 헤더로 구분해서 데이터를 따로 저장한다 (kv.py).
 """
+import asyncio
 import json
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import claude_api
+import kv
 from agents import a2a
 from agents.audit import experts as audit_ex
 from agents.audit import orchestrator as audit_orch
@@ -27,13 +30,13 @@ from labs import dashboard, persona
 
 ROOT = Path(__file__).resolve().parent
 SAMPLES = ROOT / "sample_reports"
-MAX_PDF = 30 * 1024 * 1024  # Claude 요청 한도(32MB) 아래로
+MAX_PDF = 4 * 1024 * 1024  # Vercel 요청 본문 한도(4.5MB) 아래
+
 
 @asynccontextmanager
 async def lifespan(_app):
     # A2A 서버(FastA2A)의 작업자와 MCP 세션 관리자를 앱과 함께 켜고 끈다.
-    # 보험심사팀 전문가는 화면에서 추가/삭제할 수 있어 Agent마다 따로 켜고 끈다.
-    audit_ex.register_all()
+    audit_ex.register_defaults()
     await a2a.start_all()
     async with AsyncExitStack() as stack:
         await stack.enter_async_context(mcp.session_manager.run())
@@ -41,7 +44,13 @@ async def lifespan(_app):
     await a2a.stop_all()
 
 
-app = FastAPI(title="에이전트 실습실", lifespan=lifespan)
+async def bind_visitor(x_visitor_id: str | None = Header(None), v: str | None = Query(None)):
+    """방문자 번호를 읽어 이번 요청의 저장소 범위로 정한다. (문서 링크처럼 헤더를 못 보내는 경우 ?v= 로 받는다)
+    async 함수여야 요청 안에서 계속 유지된다."""
+    kv.current_visitor.set(kv.valid_visitor(x_visitor_id) or kv.valid_visitor(v) or "")
+
+
+app = FastAPI(title="에이전트 실습실", lifespan=lifespan, dependencies=[Depends(bind_visitor)])
 
 
 @app.exception_handler(claude_api.ClaudeError)
@@ -50,13 +59,60 @@ async def claude_error(_, e: claude_api.ClaudeError):
     return JSONResponse({"error": e.message, "detail": e.detail}, status_code=e.status)
 
 
+@app.exception_handler(kv.StoreError)
+async def store_error(_, e: kv.StoreError):
+    return JSONResponse({"error": e.message, "detail": e.detail}, status_code=e.status)
+
+
+@app.exception_handler(kv.LimitError)
+async def limit_error(_, e: kv.LimitError):
+    return JSONResponse({"error": str(e)}, status_code=400)
+
+
 def need_key(key: str | None) -> str:
     if not key or not key.startswith("sk-ant-"):
         raise HTTPException(401, "API 키가 없습니다. 첫 화면에서 키를 다시 입력해 주세요.")
     return key
 
 
-# ── 공통: API 키 연결 테스트
+def sse(events):
+    """이벤트(dict)를 Server-Sent Events 형식으로 바꾼다.
+    이벤트를 만드는 쪽은 한 작업 안에서 끝까지 실행하고(그래서 작업 안의 설정값이 유지된다),
+    오래 조용하면 15초마다 신호(: ping)를 보내 연결이 끊기지 않게 한다."""
+    async def gen():
+        q: asyncio.Queue = asyncio.Queue()
+        end = object()
+
+        async def pump():
+            try:
+                async for ev in events:
+                    await q.put(ev)
+            finally:
+                await q.put(end)
+
+        task = asyncio.create_task(pump())
+        try:
+            while True:
+                try:
+                    ev = await asyncio.wait_for(q.get(), 15)
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+                    continue
+                if ev is end:
+                    break
+                yield f"data: {json.dumps(ev, ensure_ascii=False, default=str)}\n\n"
+        finally:
+            task.cancel()
+    return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ── 공통
+@app.get("/api/health")
+def health():
+    """배포 확인용: 저장소가 연결되어 있는지 알려 준다. (redis: 배포 저장소, local: 로컬 파일, missing: 연결 안 됨)"""
+    return {"ok": True, "store": kv.mode()}
+
+
 @app.post("/api/key-test")
 async def key_test(x_claude_key: str | None = Header(None)):
     # 키 확인용 짧은 호출: 생각에 쓰는 토큰까지 고려해 max_tokens를 넉넉히 두고 effort는 낮춘다.
@@ -97,7 +153,7 @@ async def analyze(file: UploadFile | None = File(None), sample: str | None = For
     else:
         raise HTTPException(400, "분석할 PDF가 없습니다.")
     if len(pdf) > MAX_PDF:
-        raise HTTPException(413, "PDF가 너무 큽니다. 30MB 이하로 올려 주세요.")
+        raise HTTPException(413, "PDF가 너무 큽니다. 4MB 이하로 올려 주세요.")
     if not pdf.startswith(b"%PDF"):
         raise HTTPException(400, f"{name}은(는) PDF 파일이 아닙니다.")
     return await dashboard.analyze_report(key, pdf, name)
@@ -132,20 +188,12 @@ async def chat(body: ChatIn, x_claude_key: str | None = Header(None)):
     async def events():
         try:
             async for t in dashboard.chat_stream(key, body.reports, body.summary, msgs):
-                yield f"data: {json.dumps({'t': t}, ensure_ascii=False)}\n\n"
-            yield 'data: {"done": true}\n\n'
+                yield {"t": t}
+            yield {"done": True}
         except claude_api.ClaudeError as e:
-            yield f"data: {json.dumps({'error': e.message, 'detail': e.detail}, ensure_ascii=False)}\n\n"
+            yield {"error": e.message, "detail": e.detail}
 
-    return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
-
-
-def sse(events):
-    """이벤트(dict)를 Server-Sent Events 형식으로 바꾼다."""
-    async def gen():
-        async for ev in events:
-            yield f"data: {json.dumps(ev, ensure_ascii=False, default=str)}\n\n"
-    return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+    return sse(events())
 
 
 # ── CH4 페르소나 챗봇
@@ -158,7 +206,7 @@ def _persona_or_404(pid: str):
     try:
         return persona.get_persona(pid)
     except KeyError as e:
-        raise HTTPException(404, str(e))
+        raise HTTPException(404, str(e).strip("'"))
 
 
 @app.get("/api/persona/personas")
@@ -186,6 +234,21 @@ def persona_delete(pid: str):
     return {"ok": True}
 
 
+@app.get("/api/persona/skills")
+def persona_skills():
+    return persona.list_skills()
+
+
+@app.get("/api/persona/html/{name}")
+def persona_html(name: str):
+    """Agent가 만든 HTML 문서. 링크에 ?v=방문자번호가 붙어 있어 만든 사람 것만 열린다."""
+    html = kv.hget(kv.vk(persona.K_HTML), name) if name.endswith(".html") and name[:-5].isalnum() else None
+    if html is None:
+        raise HTTPException(404, "문서를 찾을 수 없습니다.")
+    # Agent가 만든 문서는 격리(sandbox)해서 이 사이트의 키 저장소에 접근하지 못하게 한다.
+    return PlainTextResponse(html, media_type="text/html", headers={"Content-Security-Policy": "sandbox allow-scripts"})
+
+
 @app.get("/api/persona/{pid}/chats")
 def persona_chats(pid: str):
     _persona_or_404(pid)
@@ -198,27 +261,13 @@ def persona_chat_read(pid: str, cid: str):
     try:
         return persona.read_chat(pid, cid)
     except KeyError as e:
-        raise HTTPException(404, str(e))
+        raise HTTPException(404, str(e).strip("'"))
 
 
 @app.get("/api/persona/{pid}/memory")
 def persona_memory(pid: str):
     _persona_or_404(pid)
-    return {"text": persona.memory_path(pid).read_text(encoding="utf-8")}
-
-
-@app.get("/api/persona/skills")
-def persona_skills():
-    return persona.list_skills()
-
-
-@app.get("/api/persona/html/{name}")
-def persona_html(name: str):
-    f = persona.HTML / name
-    if not (name.endswith(".html") and f.resolve().parent == persona.HTML.resolve() and f.exists()):
-        raise HTTPException(404, "문서를 찾을 수 없습니다.")
-    # Agent가 만든 문서는 격리(sandbox)해서 이 사이트의 키 저장소에 접근하지 못하게 한다.
-    return FileResponse(f, media_type="text/html", headers={"Content-Security-Policy": "sandbox allow-scripts"})
+    return {"text": persona.read_memory(pid)}
 
 
 class PersonaChatIn(BaseModel):
@@ -274,6 +323,8 @@ def _audit(fn, *a, **kw):
         return fn(*a, **kw)
     except KeyError as e:
         raise HTTPException(404, str(e).strip("'"))
+    except kv.LimitError:
+        raise
     except ValueError as e:
         raise HTTPException(400, str(e))
 
@@ -311,10 +362,9 @@ def audit_agents():
 
 
 @app.post("/api/audit/agents")
-async def audit_agent_add(body: AgentIn):  # async: 이벤트 루프에서 A2A 작업자를 바로 켜야 한다
-    a = audit_store.upsert_agent(None, *_clean_agent(body))
-    audit_ex.register(a["id"])  # 새 Agent를 A2A 서버로 바로 붙인다
-    return a
+def audit_agent_add(body: AgentIn):
+    # A2A 서버는 이 전문가가 처음 일할 때(심사 시작 시) 자동으로 붙는다
+    return audit_store.upsert_agent(None, *_clean_agent(body))
 
 
 @app.put("/api/audit/agents/{aid}")
@@ -329,7 +379,8 @@ async def audit_agent_delete(aid: str):
     if len(audit_store.load_agents()) <= 1:
         raise HTTPException(400, "전문가는 최소 1명이 있어야 해요.")
     audit_store.delete_agent(aid)
-    await a2a.unregister_agent(aid)
+    if aid not in audit_store.DEFAULT_IDS:  # 기본 전문가의 A2A 서버는 다른 방문자도 쓰므로 내리지 않는다
+        await a2a.unregister_agent(aid)
     return {"ok": True}
 
 
@@ -342,14 +393,15 @@ def audit_docs(aid: str):
 @app.post("/api/audit/agents/{aid}/docs")
 async def audit_doc_upload(aid: str, file: UploadFile = File(...)):
     _audit(audit_store.get_agent, aid)
-    data = await file.read(audit_store.MAX_DOC + 1)
-    return _audit(audit_store.add_doc, aid, file.filename or "문서", data)
+    data = await file.read(audit_store.MAX_UPLOAD + 1)
+    return await asyncio.to_thread(_audit, audit_store.add_doc, aid, file.filename or "문서", data)
 
 
 @app.get("/api/audit/agents/{aid}/docs/{name}")
 def audit_doc_get(aid: str, name: str):
-    p = _audit(audit_store.doc_path, aid, name)
-    return FileResponse(p, filename=p.name, headers={"Content-Security-Policy": "sandbox"})
+    """문서에서 뽑아 둔 글자(Agent가 읽는 내용)를 보여 준다."""
+    text = _audit(audit_store.doc_text, aid, name)
+    return PlainTextResponse(text, headers={"Content-Security-Policy": "sandbox"})
 
 
 @app.delete("/api/audit/agents/{aid}/docs/{name}")

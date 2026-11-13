@@ -54,6 +54,7 @@ async def run(case_id: str, question: str, bus) -> None:
     team = ex.experts()
     if not team:
         raise RuntimeError("전문가 Agent가 없습니다. Agent 관리에서 전문가를 추가해 주세요.")
+    ex.ensure_registered()
     ex.current_case.set(case)
     ex.LIVE_CASES[case["id"]] = case
     ex.mesh_on.set(mesh)
