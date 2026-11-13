@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>실습 목록</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/common.css">
+<style>
+  .wrap{max-width:1120px;margin:0 auto;padding:clamp(24px,5vw,56px) 20px 64px}
+  .wrap h1{font-size:clamp(1.9rem,4vw,2.8rem);font-weight:800;letter-spacing:-.02em}
+  .wrap .lead{margin-top:10px;color:var(--muted);font-size:17px}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;margin-top:36px}
+  .tile{display:block;text-decoration:none;border-radius:16px;overflow:hidden;background:var(--white);border:1px solid var(--line);transition:border-color .2s}
+  .tile:hover,.tile:focus-visible{border-color:var(--ink)}
+  .thumb{aspect-ratio:16/10;overflow:hidden}
+  .thumb svg{width:100%;height:100%;display:block;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+  .tile:hover .thumb svg{transform:scale(1.045)}
+  .body{padding:18px 20px 20px;display:grid;gap:8px}
+  .body h2{font-size:1.3rem;font-weight:800}
+  .body p{color:var(--muted)}
+  .body .concepts{margin-top:4px}
+  .open{margin-top:6px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+  .tile:hover .open{color:var(--cobalt)}
+  @media(max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<header class="bar" id="bar"></header>
+<main class="wrap">
+  <h1>어떤 실습부터 해볼까요?</h1>
+  <p class="lead">썸네일을 눌러 교안의 결과물을 직접 실행해 보세요.</p>
+  <div class="grid" id="grid"></div>
+</main>
+<script src="assets/common.js"></script>
+<script>
+const { LABS, thumbs, esc, $ , store } = App;
+if (!App.hasAccess()) location.replace('index.html');
+$('#bar').innerHTML = `<span class="brand">에이전트 실습실</span><div class="sp"></div>
+  <div class="conn"><i class="dot"></i><span>${esc(App.maskKey())}</span></div>
+  <button class="btn ghost sm" id="disconnect">연결 해제</button>`;
+$('#disconnect').onclick = () => { store.clear(); location.href = 'index.html'; };
+
+$('#grid').innerHTML = LABS.map(l => `
+  <a class="tile" href="${l.file}">
+    <div class="thumb">${thumbs[l.id]}</div>
+    <div class="body">
+      <div><span class="tag">${l.ch}</span></div>
+      <h2>${esc(l.title)}</h2>
+      <p>${esc(l.desc)}</p>
+      <div class="concepts">${l.concepts.map(c => `<span>${esc(c)}</span>`).join('')}</div>
+      <span class="open">실습 열기
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+    </div>
+  </a>`).join('');
+</script>
+</body>
+</html>

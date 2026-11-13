@@ -1,0 +1,212 @@
+/* 공통 스타일: 색/글꼴 토큰, 버튼, 상단바, 채팅, 로그, 그래프 */
+:root{
+  --paper:#E4DDFF; --white:#fff; --ink:#14101F; --muted:#4A4560; --line:#14101F;
+  --cobalt:#E0218A; --cobalt-d:#B8176F; --gold:#FFD400; --mint:#00A86B; --coral:#E8301F;
+  --font:'Noto Sans KR','Malgun Gothic',sans-serif; --display:'Black Han Sans','Noto Sans KR',sans-serif;
+  --mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
+  --on-ink:#fff; --on-accent:#fff; --concl-bg:#FFD400; --concl-fg:#14101F; --concl-h:#14101F;
+  --k1:#E0218A; --k2:#FFD400; --k3:#14101F; --k4:#fff; --k5:#00A86B; --k6:#FF5A2E; --k7:#F8CFE6; --k8:#FFB3DA; --k9:#A79FC7; --k10:#7A6FA8;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.6 var(--font);word-break:keep-all}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.2;letter-spacing:-.01em}
+p{margin:0}
+a{color:inherit}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--cobalt);outline-offset:2px}
+
+.btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:8px;padding:11px 18px;font-weight:600;cursor:pointer;background:var(--ink);color:var(--on-ink);text-decoration:none;min-height:44px}
+.btn:hover{opacity:.88}
+.btn.blue{background:var(--cobalt);color:var(--on-accent)} .btn.blue:hover{background:var(--cobalt-d);opacity:1}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:var(--on-ink);opacity:1}
+.btn.sm{padding:6px 12px;min-height:34px;font-size:14px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+.tag{display:inline-block;font:600 12px/1 var(--font);padding:5px 8px;border-radius:5px;background:var(--ink);color:var(--on-ink)}
+
+/* 상단바 */
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;min-height:56px;padding:0 20px;background:var(--paper);border-bottom:1px solid var(--line)}
+.bar .brand{font:800 18px var(--display);text-decoration:none}
+.bar .back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-weight:600;color:var(--muted)}
+.bar .back:hover{color:var(--ink)}
+.bar-title{display:flex;align-items:center;gap:10px;font-weight:700}
+.bar .sp{flex:1}
+.conn{display:flex;align-items:center;gap:8px;font:500 13px var(--mono);color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 3px rgba(18,163,127,.2)}
+@media(max-width:640px){.conn span{display:none}.bar{padding:0 12px;gap:10px}}
+
+/* 실습 페이지 머리 */
+.lab-head{display:flex;flex-wrap:wrap;gap:12px 32px;align-items:flex-end;justify-content:space-between;padding:22px 20px 14px}
+.lab-head h1{font-size:clamp(1.5rem,3vw,2rem);font-weight:800}
+.lab-head p{color:var(--muted);max-width:62ch;margin-top:6px}
+.concepts{display:flex;flex-wrap:wrap;gap:6px}
+.concepts span{font-size:13px;font-weight:500;padding:4px 10px;border-radius:99px;box-shadow:inset 0 0 0 1.5px var(--line);color:var(--muted)}
+.explain{margin:0 20px 16px;border-left:3px solid var(--cobalt);background:var(--white);border-radius:0 8px 8px 0}
+.explain summary{cursor:pointer;padding:10px 14px;font-weight:600}
+.explain div{padding:0 14px 12px;color:var(--muted);max-width:90ch}
+.demo-note{margin:0 20px 14px;font-size:13px;color:var(--muted)}
+.demo-note b{color:var(--ink)}
+
+.panel{background:var(--white);border-radius:12px;border:1px solid var(--line);min-width:0}
+.panel-h{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.panel-b{padding:16px}
+.empty{padding:36px 20px;text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--ink);margin-bottom:4px}
+
+/* 채팅 */
+.chat{display:flex;flex-direction:column;min-height:0}
+.msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:10px 14px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--ink);color:var(--on-ink);border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--paper);border-bottom-left-radius:4px}
+.msg a{color:var(--cobalt);font-weight:600}
+.composer{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.composer input,.composer textarea{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--white);resize:none}
+.composer input:focus,.composer textarea:focus{border-color:var(--cobalt);outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px}
+.chip{border:1.5px solid var(--line);background:var(--white);border-radius:99px;padding:5px 12px;font-size:13px;cursor:pointer}
+.chip:hover{border-color:var(--cobalt);color:var(--cobalt)}
+
+/* 로그 */
+.log{font-size:14px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:14px 16px}
+.log .row{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding-left:10px;border-left:3px solid var(--line)}
+.log .who{font-weight:700;font-size:13px}
+.log .t{color:var(--muted);font-size:12px;font-family:var(--mono);text-align:right}
+.log .what{grid-column:1/-1;color:var(--ink)}
+.log .sub{grid-column:1/-1;color:var(--muted);font-size:13px}
+.log-empty{color:var(--muted);padding:14px 16px;font-size:14px}
+
+/* 그래프 */
+.graph{width:100%;height:auto;display:block}
+.graph .edge{stroke:var(--line);stroke-width:2.5;fill:none;transition:stroke .25s}
+.graph .edge.on{stroke:var(--cobalt)}
+.graph .edge.a2a{stroke-dasharray:6 5}
+.graph .node circle.body{fill:var(--white);stroke:var(--ink);stroke-width:2.5;transition:fill .25s,stroke .25s}
+.graph .node.on circle.body{fill:var(--mint);stroke:var(--ink)}
+.graph .node text{font:600 13px var(--font);text-anchor:middle;fill:var(--ink);pointer-events:none}
+.graph .node.on text.lbl{fill:var(--ink)}
+.graph .elabel{font:600 12px var(--mono);text-anchor:middle;fill:var(--cobalt);paint-order:stroke;stroke:var(--white);stroke-width:5px}
+.graph .packet{fill:var(--gold);stroke:var(--ink);stroke-width:2}
+.graph .ring{fill:none;stroke:var(--mint);stroke-width:3;opacity:0}
+.graph .node.on .ring{opacity:.5;animation:ring 1.2s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes ring{from{transform:scale(1);opacity:.6}to{transform:scale(1.5);opacity:0}}
+
+.sr{position:absolute;left:-9999px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* 썸네일 SVG 색을 토큰에 연결 (속성 선택자로 덮어쓴다) */
+svg [fill="#2B4CFF"]{fill:var(--k1)} svg [stroke="#2B4CFF"]{stroke:var(--k1)}
+svg [fill="#FFBE1F"]{fill:var(--k2)} svg [stroke="#FFBE1F"]{stroke:var(--k2)}
+svg [fill="#101A3A"]{fill:var(--k3)} svg [stroke="#101A3A"]{stroke:var(--k3)}
+svg [fill="#fff"]{fill:var(--k4)} svg [stroke="#fff"]{stroke:var(--k4)}
+svg [fill="#0F8E6D"]{fill:var(--k5)}
+svg [fill="#E8452F"]{fill:var(--k6)} svg [stroke="#E8452F"]{stroke:var(--k6)}
+svg [fill="#D7DDF5"]{fill:var(--k7)} svg [stroke="#D7DDF5"]{stroke:var(--k7)}
+svg [fill="#8E9BD6"]{fill:var(--k8)}
+svg [fill="#9AA3C4"]{fill:var(--k9)}
+svg [stroke="#5A6BA8"]{stroke:var(--k10)}
+
+/* 디자인: 팝 스티커 — 라벤더 바탕, 굵은 검정 테두리, 평평한 그림자 */
+:root h1,:root h2,:root h3{font-weight:400!important;letter-spacing:0}
+:root .bar{border-bottom:2px solid var(--ink)}
+:root .bar .brand,:root .gate .brand{font-weight:400!important}
+:root .panel,:root .slot,:root .tile{border:2px solid var(--ink);border-radius:8px;box-shadow:5px 5px 0 var(--ink);overflow:hidden}
+:root .panel-h{background:var(--gold);border-bottom:2px solid var(--ink);font-weight:700}
+:root .tile{transition:transform .15s,box-shadow .15s}
+:root .tile:hover,:root .tile:focus-visible{transform:translate(-3px,-3px);box-shadow:8px 8px 0 var(--ink);border-color:var(--ink)}
+:root .thumb{border-bottom:2px solid var(--ink)}
+:root .tile:hover .open{color:var(--cobalt)}
+:root .btn{border:2px solid var(--ink);border-radius:6px;box-shadow:3px 3px 0 var(--ink);transition:transform .1s,box-shadow .1s}
+:root .btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+:root .btn.ghost{background:#fff;box-shadow:3px 3px 0 var(--ink)}
+:root .btn.ghost:hover{background:var(--gold);color:var(--ink)}
+:root .btn[disabled]{box-shadow:none;opacity:.5}
+:root .tag{background:var(--gold);color:var(--ink);border:2px solid var(--ink);border-radius:4px}
+:root .concepts span{background:#fff;color:var(--ink);box-shadow:none;border:2px solid var(--ink)}
+:root .explain{border:2px solid var(--ink);border-left-width:8px;border-left-color:var(--cobalt);border-radius:6px}
+:root .msg{border:2px solid var(--ink)}
+:root .msg.bot{background:#fff}
+:root .msg.user{background:var(--cobalt);color:#fff}
+:root .composer{border-top:2px solid var(--ink)}
+:root .composer input,:root .composer textarea,:root .case textarea{border:2px solid var(--ink);border-radius:6px}
+:root .chip{border:2px solid var(--ink)}
+:root .chip:hover{background:var(--gold);color:var(--ink);border-color:var(--ink)}
+:root .keybox{border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink);border-radius:6px}
+:root .gate h1{font-size:clamp(2.4rem,5.6vw,4.4rem);line-height:1.1}
+:root .rack{gap:20px}
+:root .slot p{border-top:2px solid var(--ink)}
+:root .tabs{background:#fff;border-bottom:2px solid var(--ink)}
+:root .tabs button[aria-selected=true]{border-color:var(--cobalt);color:var(--ink)}
+:root .plist li button[aria-current=true]{background:var(--ink);color:#fff}
+:root .conn{color:var(--ink)}
+
+/* Agent 그래프 (assets/graph.js) */
+.agraph{width:100%;height:auto;display:block;overflow:visible}
+.agraph .edge,.glegend .edge{stroke:var(--ink);stroke-width:3;fill:none;stroke-linecap:round;transition:stroke .2s,stroke-width .2s}
+.agraph .edge.request,.glegend .edge.request{stroke:#A8A2BD;stroke-width:2.5}
+.agraph .edge.subagent,.glegend .edge.subagent{stroke:#FF8A00;stroke-width:4}
+.agraph .edge.a2a,.glegend .edge.a2a{stroke:#E0218A;stroke-dasharray:2 8;stroke-width:4}
+.agraph .edge.mcp,.glegend .edge.mcp{stroke:#00A86B;stroke-dasharray:12 6;stroke-width:4}
+.agraph .edge.on{stroke:#2B9BFF;stroke-width:6}
+.agraph .edge.a2a.on{stroke-dasharray:10 8;animation:agflow .6s linear infinite}
+@keyframes agflow{to{stroke-dashoffset:-18}}
+.agraph .pill rect{fill:#fff;stroke:var(--ink);stroke-width:2}
+.agraph .pill text{font:700 11px var(--mono);text-anchor:middle;dominant-baseline:central;fill:var(--ink)}
+.agraph .pill.a2a rect{fill:var(--cobalt)} .agraph .pill.a2a text{fill:#fff}
+.agraph .pill.tool rect{fill:var(--gold)}
+.agraph .pill.mcp rect{fill:var(--mint)} .agraph .pill.mcp text{fill:#fff}
+.agraph .pill.subagent rect{fill:#E9E3FF}
+.agraph .node .shadow{fill:var(--ink)}
+.agraph .node .body{fill:#fff;stroke:var(--ink);stroke-width:3;transition:fill .25s}
+.agraph .node .band{fill:none;stroke-width:6;opacity:.9}
+.agraph .node .name{font:400 17px var(--display);text-anchor:middle;dominant-baseline:central;fill:var(--ink)}
+.agraph .node .name.long{font:800 13px var(--font);letter-spacing:-.02em}
+.agraph .node .role{font:500 12px var(--font);text-anchor:middle;fill:var(--muted);paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round}
+.agraph .node .ring{fill:none;stroke:var(--mint);stroke-width:4;opacity:0}
+.agraph .node.on .body{fill:#B9F2D7}
+.agraph .node.on .ring{animation:agring 1.2s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes agring{from{opacity:.8;transform:scale(1)}to{opacity:0;transform:scale(1.45)}}
+.agraph .packet{fill:var(--gold);stroke:var(--ink);stroke-width:2.5}
+.agraph .trail{fill:var(--gold);opacity:.45}
+.say{font:500 12.5px/1.45 var(--font);background:#fff;border:2px solid var(--ink);border-radius:10px;padding:7px 10px;box-shadow:3px 3px 0 var(--ink);
+     display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;animation:sayPop .2s ease-out}
+@keyframes sayPop{from{transform:scale(.85);opacity:0}}
+.stage-bg{background:#fff;padding:8px}
+.alert{padding:12px 14px;border:2px solid var(--ink);border-left:8px solid var(--coral);border-radius:6px;background:#fff;margin-bottom:12px}
+.alert code{display:block;font:500 12px var(--mono);color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
+.badge{font:700 11px var(--mono);padding:2px 6px;border-radius:4px;border:1.5px solid var(--ink);background:var(--cobalt);color:#fff;margin-left:6px}
+.badge.tool{background:var(--gold);color:var(--ink)} .badge.mcp{background:var(--mint)} .badge.subagent{background:#E9E3FF;color:var(--ink)}
+.badge.request{background:#fff;color:var(--ink)}
+.stages{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.stages span{font-size:12px;font-weight:600;padding:3px 8px;border-radius:4px;border:1.5px solid var(--ink);background:#fff;color:var(--muted)}
+.stages span.cur{background:var(--cobalt);color:#fff}
+.agraph .node.clickable{cursor:pointer}
+.agraph .node.clickable:hover .body{fill:#FFF6C7}
+.agraph .node.clickable:focus{outline:none}
+.agraph .node.clickable:focus-visible .body{stroke:var(--cobalt);stroke-width:5}
+.agraph .node.sel .body{stroke:var(--cobalt);stroke-width:5}
+.agraph .node.off{opacity:.35}
+.agraph .node.off .band{stroke-dasharray:6 6}
+.agraph .edge.off{opacity:.2}
+.agraph .pill.off{opacity:.3}
+.agraph .nbadge{display:none;pointer-events:none}
+.agraph .nbadge.show{display:block}
+.agraph .nbadge circle{fill:var(--cobalt);stroke:var(--ink);stroke-width:2}
+.agraph .nbadge text{font:800 11px var(--font);fill:#fff;text-anchor:middle;dominant-baseline:central}
+
+/* 그래프 범례 (연결 종류) */
+.glegend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:8px 12px 4px;font-size:13px;font-weight:600}
+.glegend span{display:inline-flex;align-items:center;gap:6px}
+.glegend svg{overflow:visible}
+.glegend .edge{fill:none;stroke-linecap:round}
+.glegend .tip{margin-left:auto;font-weight:500;color:var(--muted)}
+
+/* 연결 방식 라벨: 선 색과 맞춘 작은 알약 */
+.agraph .pill text{font:700 10.5px var(--mono)}
+.agraph .pill.request rect{fill:#fff;stroke:#A8A2BD} .agraph .pill.request text{fill:var(--muted)}
+.agraph .pill.subagent rect{fill:#FF8A00} .agraph .pill.subagent text{fill:#fff}
+.agraph .pill.mcp rect{fill:#00A86B} .agraph .pill.mcp text{fill:#fff}
+.agraph .pill.a2a rect{fill:#E0218A} .agraph .pill.a2a text{fill:#fff}
+.agraph .pill.tool rect{fill:var(--gold)} .agraph .pill.tool text{fill:var(--ink)}

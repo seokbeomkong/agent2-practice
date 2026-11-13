@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>불량 리포트 분석 Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/common.css">
+<style>
+  .layout{display:grid;grid-template-columns:280px minmax(0,1fr) 360px;gap:20px;padding:0 20px 32px;align-items:start}
+  .src{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 14px 4px}
+  .src .btn{justify-content:center;padding-inline:8px}
+  .drop{margin:10px 14px 0;padding:12px;border:2px dashed var(--ink);border-radius:8px;text-align:center;font-size:13px;color:var(--muted);background:var(--paper)}
+  .drop.over{background:var(--gold);color:var(--ink)}
+  .files{list-style:none;margin:8px 0 0;padding:0;max-height:330px;overflow:auto}
+  .files li{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:10px 14px;border-top:2px solid var(--ink)}
+  .files .n{font-weight:700;font-size:14px;overflow-wrap:anywhere}
+  .files .m{color:var(--muted);font-size:12px}
+  .files .m a{color:var(--cobalt);font-weight:600}
+  .files .s{grid-row:1/3;grid-column:2;align-self:center;font-size:12px;font-weight:700;padding:3px 8px;border-radius:4px;border:2px solid var(--ink);background:#fff}
+  .files li.run .s{background:var(--gold)} .files li.done .s{background:var(--mint);color:#fff} .files li.fail .s{background:var(--coral);color:#fff}
+  .files .err{grid-column:1/-1;font-size:12px;color:var(--coral)}
+  .files li button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0;text-decoration:underline}
+  .bar-p{height:10px;border:2px solid var(--ink);border-radius:99px;margin:14px;overflow:hidden;background:#fff}
+  .bar-p i{display:block;height:100%;width:0;background:var(--cobalt);transition:width .4s}
+  .runbox{padding:0 14px 14px}
+  .runbox .btn{width:100%;justify-content:center}
+  .tabs{display:flex;gap:4px;padding:8px 12px 0}
+  .tabs button{border:0;background:none;padding:10px 14px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:4px solid transparent;margin-bottom:-2px}
+  .tabs button[aria-selected=true]{color:var(--ink);border-color:var(--cobalt)}
+  .view{padding:20px}
+  .loading{display:flex;align-items:center;gap:12px;padding:40px 10px;justify-content:center;font-weight:600}
+  .spin{width:22px;height:22px;border:3px solid var(--ink);border-right-color:transparent;border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .alert{padding:12px 14px;border:2px solid var(--ink);border-left:8px solid var(--coral);border-radius:6px;background:#fff;margin-bottom:14px}
+  .alert code{display:block;font:500 12px var(--mono);color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
+  .stats{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px}
+  .stats div{flex:1 1 120px;padding:12px 14px;border:2px solid var(--ink);border-radius:8px;background:#fff;box-shadow:3px 3px 0 var(--ink)}
+  .stats b{display:block;font:400 2rem/1.1 var(--display)}
+  .stats span{font-size:13px;color:var(--muted)}
+  .headline{font:400 1.45rem/1.4 var(--display);margin-bottom:18px;max-width:40ch}
+  .sum h3{font-size:1.05rem;margin:22px 0 10px}
+  .sum ul{margin:0;padding-left:20px;display:grid;gap:8px;max-width:72ch}
+  .prio{list-style:none;padding:0;margin:0;display:grid;gap:10px;counter-reset:p}
+  .prio li{display:grid;grid-template-columns:36px 1fr;gap:4px 12px;align-items:start;counter-increment:p}
+  .prio li::before{content:counter(p);grid-row:1/3;width:32px;height:32px;border-radius:50%;border:2px solid var(--ink);background:var(--gold);display:grid;place-items:center;font-weight:800}
+  .prio b{font-size:15px} .prio span{color:var(--muted);font-size:14px}
+  .lines{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .lines div{padding:12px 14px;border:2px solid var(--ink);border-radius:8px;background:#fff}
+  .lines b{display:block;margin-bottom:4px}
+  .charts{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px 32px}
+  .chart h3{font-size:1rem;margin-bottom:4px}
+  .chart p{font-size:13px;color:var(--muted);margin-bottom:12px}
+  .hb{display:grid;grid-template-columns:minmax(88px,120px) 1fr auto;gap:10px;align-items:center;margin:10px 0;font-size:14px}
+  .hb .lab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hb .t{position:relative;height:18px;border:2px solid var(--ink);border-radius:4px;background:#fff;overflow:hidden}
+  .hb .t i{position:absolute;inset:0 auto 0 0;width:0;transition:width .8s cubic-bezier(.2,.7,.2,1)}
+  .hb .t u{position:absolute;top:0;bottom:0;width:3px;background:var(--ink);transition:left .8s}
+  .hb b{font-family:var(--mono);font-size:13px;white-space:nowrap}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:12px}
+  .legend i{display:inline-block;width:12px;height:12px;border:2px solid var(--ink);border-radius:3px;margin-right:6px;vertical-align:-2px}
+  .cols{display:flex;align-items:flex-end;gap:10px;height:150px;border-bottom:3px solid var(--ink);padding-top:20px}
+  .cols div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font:600 13px var(--mono);gap:4px}
+  .cols i{display:block;width:100%;max-width:46px;border:2px solid var(--ink);border-bottom:0;border-radius:4px 4px 0 0;height:0;transition:height .8s cubic-bezier(.2,.7,.2,1)}
+  .cols-l{display:flex;gap:10px;font-size:12px;color:var(--muted);margin-top:6px}.cols-l span{flex:1;text-align:center}
+  .full{grid-column:1/-1}
+  .det-tools{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .seg{display:inline-flex;border:2px solid var(--ink);border-radius:6px;overflow:hidden}
+  .seg button{border:0;background:#fff;padding:7px 12px;font-weight:600;cursor:pointer;font-size:14px}
+  .seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+  details.rep{border:2px solid var(--ink);border-radius:8px;margin-bottom:10px;background:#fff}
+  details.rep summary{cursor:pointer;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-weight:700}
+  details.rep summary small{font-weight:400;color:var(--muted)}
+  details.rep .in{padding:0 14px 14px}
+  details.rep .in > p{margin-bottom:10px}
+  details.rep dl{display:grid;grid-template-columns:100px 1fr;gap:6px 12px;margin:0;font-size:14px}
+  details.rep dt{color:var(--muted)} details.rep dd{margin:0}
+  details.rep ol{margin:0;padding-left:18px}
+  .lv{font:700 12px var(--mono);padding:3px 7px;border-radius:4px;border:2px solid var(--ink)}
+  .alltext{white-space:pre-wrap;font:14px/1.7 var(--font);background:#fff;border:2px solid var(--ink);border-radius:8px;padding:16px;max-height:560px;overflow:auto}
+  .chat{height:640px}
+  .msg.bot b{font-weight:700}
+  .msg.err{align-self:stretch;max-width:none;background:#fff;border-left:8px solid var(--coral)}
+  .msg.err code{display:block;font:12px var(--mono);color:var(--muted)}
+  .caret::after{content:"";display:inline-block;width:8px;height:15px;background:var(--ink);margin-left:2px;vertical-align:-2px;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  @media(max-width:1240px){.layout{grid-template-columns:260px minmax(0,1fr)}.chatcol{grid-column:1/-1}.chat{height:480px}}
+  @media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr)}.charts{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<script src="assets/common.js"></script>
+<script>
+const lab = App.LABS.find(l => l.id === 'dashboard');
+App.mountBar(lab.title, lab.ch);
+App.mountHead(lab, '리포트 PDF를 한 건씩 Claude에게 보여 주고, 문서번호·제품·불량률·심각도·원인·재현 방법·개선 결과 같은 항목을 정해진 형식(JSON)으로 뽑아냅니다. 뽑아낸 데이터를 모아 Claude가 전체 요약과 대응 우선순위를 쓰고, 화면은 같은 데이터로 Dashboard를 그립니다. 챗봇은 이 분석 데이터를 시스템 프롬프트로 받아서 불량 데이터를 이해한 상태로 답해요. 정해진 규칙대로만 처리하는 일반 앱과 달리, AI가 처음 보는 문서를 읽고 판단하는 것이 핵심입니다.', true);
+</script>
+
+<main class="layout">
+  <section class="panel" aria-label="리포트 목록">
+    <div class="panel-h">불량 리포트</div>
+    <div class="src">
+      <button class="btn ghost sm" id="loadSamples">샘플 5건 불러오기</button>
+      <label class="btn ghost sm" for="pick" style="margin:0">PDF 올리기</label>
+      <input type="file" id="pick" accept="application/pdf,.pdf" multiple class="sr">
+    </div>
+    <div class="drop" id="drop">PDF를 여기로 끌어다 놓아도 돼요</div>
+    <ul class="files" id="files"></ul>
+    <div class="bar-p" aria-hidden="true"><i id="prog"></i></div>
+    <div class="runbox"><button class="btn blue" id="run" disabled>분석 시작</button></div>
+  </section>
+
+  <section class="panel" aria-label="분석 결과">
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" aria-selected="true" data-t="sum">전체 요약</button>
+      <button role="tab" aria-selected="false" data-t="dash">Dashboard</button>
+      <button role="tab" aria-selected="false" data-t="det">리포트 상세</button>
+    </div>
+    <div class="view" id="view" aria-live="polite"></div>
+  </section>
+
+  <section class="panel chat chatcol" aria-label="챗봇">
+    <div class="panel-h">불량 데이터 챗봇</div>
+    <div class="msgs" id="msgs" aria-live="polite"><div class="msg bot">리포트 분석이 끝나면 불량 데이터에 대해 무엇이든 물어보세요.</div></div>
+    <div class="chips" id="chips"></div>
+    <form class="composer" id="cf"><input id="ci" placeholder="분석이 끝나면 질문할 수 있어요" disabled aria-label="질문 입력" autocomplete="off"><button class="btn blue" disabled id="cs">보내기</button></form>
+  </section>
+</main>
+
+<script>
+const { $, esc, api, readSSE } = App;
+
+// ── 상태
+let items = [];          // {id, name, sample?, file?, state: wait|run|done|fail, data?, error?}
+let reports = [];        // 분석 성공한 리포트 데이터
+let summary = null, summaryErr = null, phase = 'idle'; // idle | analyzing | summarizing | done
+let tab = 'sum', detMode = 'cards';
+const history = [];      // 챗봇 대화 기록
+const PALETTE = ['#E0218A', '#FFD400', '#00A86B', '#7A6FA8', '#FF5A2E', '#2B9BFF'];
+const LVC = ['', '#B9F2D7', '#B9F2D7', '#FFE680', '#FF9C8A', '#E8301F'];
+
+// ── 리포트 목록
+function drawFiles() {
+  $('#files').innerHTML = items.map(it => `<li class="${it.state}">
+      <span class="n">${esc(it.name)}</span>
+      <span class="s">${{ wait: '대기', run: '읽는 중', done: '완료', fail: '실패' }[it.state]}</span>
+      <span class="m">${it.sample ? `샘플, <a href="/api/dashboard/samples/${encodeURIComponent(it.sample)}" target="_blank" rel="noopener">원문 보기</a>` : '올린 파일'}
+        ${phase === 'idle' || phase === 'done' ? ` <button data-rm="${it.id}">빼기</button>` : ''}</span>
+      ${it.error ? `<span class="err">${esc(it.error)}</span>` : ''}</li>`).join('')
+    || '<li style="color:var(--muted);font-size:14px">아직 리포트가 없어요. 샘플을 불러오거나 PDF를 올려 주세요.</li>';
+  const busy = phase === 'analyzing' || phase === 'summarizing';
+  $('#run').disabled = busy || !items.length;
+  $('#run').textContent = busy ? (phase === 'analyzing' ? '분석 중' : '요약 작성 중') : (phase === 'done' ? '다시 분석' : '분석 시작');
+  $('#loadSamples').disabled = busy;
+}
+let seq = 0;
+function addItem(o) { if (!items.some(i => i.name === o.name)) items.push({ id: ++seq, state: 'wait', ...o }); }
+$('#files').onclick = e => { const b = e.target.closest('[data-rm]'); if (b) { items = items.filter(i => i.id !== +b.dataset.rm); drawFiles(); } };
+
+$('#loadSamples').onclick = async () => {
+  try {
+    const list = await (await api('/api/dashboard/samples')).json();
+    list.forEach(s => addItem({ name: s.name, sample: s.name }));
+    drawFiles();
+  } catch (e) { showError(e); }
+};
+function addFiles(fl) {
+  [...fl].filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf').forEach(f => addItem({ name: f.name, file: f }));
+  drawFiles();
+}
+$('#pick').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+// ── 분석: 리포트를 3건씩 동시에 Claude에게 보내고, 끝나면 전체 요약을 요청한다
+$('#run').onclick = async () => {
+  phase = 'analyzing'; reports = []; summary = null; summaryErr = null;
+  items.forEach(i => { i.state = 'wait'; i.error = ''; i.data = null; });
+  history.length = 0; resetChat();
+  drawFiles(); render(); progress();
+  const queue = [...items];
+  const worker = async () => {
+    for (let it; (it = queue.shift());) {
+      it.state = 'run'; drawFiles(); render();
+      const fd = new FormData();
+      if (it.file) fd.append('file', it.file); else fd.append('sample', it.sample);
+      try {
+        it.data = await (await api('/api/dashboard/analyze', { form: fd })).json();
+        it.state = 'done';
+      } catch (e) { it.state = 'fail'; it.error = e.message + (e.detail ? ` (${e.detail})` : ''); }
+      drawFiles(); progress(); render();
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  reports = items.filter(i => i.state === 'done').map(i => i.data);
+  if (!reports.length) { phase = 'idle'; drawFiles(); render(); return; }
+  phase = 'summarizing'; drawFiles(); render();
+  try { summary = await (await api('/api/dashboard/summary', { json: { reports } })).json(); }
+  catch (e) { summaryErr = e; }
+  phase = 'done'; drawFiles(); render(); enableChat();
+};
+function progress() {
+  const n = items.length, d = items.filter(i => i.state === 'done' || i.state === 'fail').length;
+  $('#prog').style.width = n ? (d / n * 100) + '%' : 0;
+}
+
+// ── 결과 화면
+$('#tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; tab = b.dataset.t;
+  document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b)); render(); };
+
+function showError(e) { $('#view').insertAdjacentHTML('afterbegin', `<div class="alert"><b>${esc(e.message)}</b>${e.detail ? `<code>${esc(e.detail)}</code>` : ''}</div>`); }
+const fmtNum = v => v == null ? '-' : Number(v).toLocaleString('ko-KR');
+const lineColor = (() => { const m = {}; return l => m[l] || (m[l] = PALETTE[Object.keys(m).length % PALETTE.length]); })();
+
+function render() {
+  const v = $('#view');
+  const failed = items.filter(i => i.state === 'fail');
+  const failHtml = failed.length && phase !== 'analyzing' ? `<div class="alert"><b>${failed.length}건을 분석하지 못했어요.</b><code>${failed.map(f => esc(f.name + ': ' + f.error)).join('<br>')}</code></div>` : '';
+  if (phase === 'idle' && !reports.length) {
+    v.innerHTML = failHtml + `<div class="empty"><strong>아직 분석한 리포트가 없어요</strong>왼쪽에서 샘플 5건을 불러오거나 PDF를 올린 뒤 분석 시작을 눌러 주세요.</div>`; return;
+  }
+  if (phase === 'analyzing') {
+    const d = items.filter(i => i.state === 'done').length;
+    v.innerHTML = `<div class="loading"><i class="spin"></i>Claude가 리포트를 읽고 있어요 (${d}/${items.length})</div>`; return;
+  }
+  if (tab === 'sum') return renderSummary(v, failHtml);
+  if (tab === 'dash') return renderDash(v, failHtml);
+  return renderDetail(v, failHtml);
+}
+
+function renderSummary(v, pre) {
+  const avg = (reports.reduce((a, r) => a + (+r.defect_rate || 0), 0) / reports.length).toFixed(2);
+  const totalDef = reports.reduce((a, r) => a + (r.defect_qty || 0), 0);
+  const stats = `<div class="stats"><div><b>${reports.length}</b><span>분석한 리포트</span></div><div><b>${avg}%</b><span>평균 불량률</span></div>
+    <div><b>${reports.filter(r => r.severity >= 4).length}</b><span>Level 4 이상</span></div><div><b>${fmtNum(totalDef)}</b><span>불량 수량 합계(대)</span></div></div>`;
+  let body;
+  if (phase === 'summarizing') body = `<div class="loading"><i class="spin"></i>Claude가 전체 요약을 쓰고 있어요</div>`;
+  else if (summaryErr) body = `<div class="alert"><b>요약을 만들지 못했어요. ${esc(summaryErr.message)}</b><code>${esc(summaryErr.detail)}</code></div>`;
+  else if (summary) body = `<div class="sum"><p class="headline">${esc(summary.headline)}</p>
+      <h3>핵심 발견</h3><ul>${summary.key_findings.map(k => `<li>${esc(k)}</li>`).join('')}</ul>
+      <h3>대응 우선순위</h3><ol class="prio">${summary.priorities.map(p => `<li><b>${esc(p.title)} <small style="color:var(--muted);font-weight:400">${esc(p.doc_no)}</small></b><span>${esc(p.reason)}</span></li>`).join('')}</ol>
+      <h3>제품군별 상황</h3><div class="lines">${summary.by_product_line.map(l => `<div><b><i style="display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid var(--ink);background:${lineColor(l.product_line)};margin-right:6px"></i>${esc(l.product_line)}</b>${esc(l.note)}</div>`).join('')}</div></div>`;
+  v.innerHTML = pre + stats + (body || '');
+}
+
+function renderDash(v, pre) {
+  const rs = [...reports].sort((a, b) => b.defect_rate - a.defect_rate);
+  const max = Math.max(...rs.map(r => +r.defect_rate || 0), 0.1);
+  const lv = [1, 2, 3, 4, 5].map(l => reports.filter(r => r.severity === l).length), lvMax = Math.max(...lv, 1);
+  const lines = {}; reports.forEach(r => { const k = r.product_line || '기타'; lines[k] = (lines[k] || 0) + (r.defect_qty || 0); });
+  const lineMax = Math.max(...Object.values(lines), 1);
+  const status = {}; reports.forEach(r => { status[r.status] = (status[r.status] || 0) + 1; });
+  v.innerHTML = pre + `<div class="charts">
+    <div class="chart full"><h3>불량 유형별 불량률</h3><p>막대는 현재 불량률, 검은 선은 개선 후 불량률입니다.</p>
+      ${rs.map(r => `<div class="hb"><span class="lab" title="${esc(r.product)}">${esc(r.defect_type)}</span>
+        <span class="t"><i data-w="${r.defect_rate / max * 100}" style="background:${lineColor(r.product_line)}"></i>${r.improved_defect_rate != null ? `<u data-l="${r.improved_defect_rate / max * 100}" style="left:0"></u>` : ''}</span>
+        <b>${r.defect_rate}%${r.improved_defect_rate != null ? ` → ${r.improved_defect_rate}%` : ''}</b></div>`).join('')}
+      <div class="legend">${[...new Set(reports.map(r => r.product_line))].map(l => `<span><i style="background:${lineColor(l)}"></i>${esc(l)}</span>`).join('')}</div></div>
+    <div class="chart"><h3>심각도 분포</h3><p>Level 4 이상은 빨간색입니다.</p>
+      <div class="cols">${lv.map((n, i) => `<div>${n || ''}<i data-h="${n / lvMax * 100}" style="background:${i >= 3 ? 'var(--coral)' : 'var(--gold)'}"></i></div>`).join('')}</div>
+      <div class="cols-l">${[1, 2, 3, 4, 5].map(l => `<span>Level ${l}</span>`).join('')}</div></div>
+    <div class="chart"><h3>제품군별 불량 수량</h3><p>리포트에 적힌 불량 수량의 합계(대)입니다.</p>
+      ${Object.entries(lines).map(([k, n]) => `<div class="hb"><span class="lab">${esc(k)}</span><span class="t"><i data-w="${n / lineMax * 100}" style="background:${lineColor(k)}"></i></span><b>${fmtNum(n)}</b></div>`).join('')}
+      <h3 style="margin-top:20px">조치 상태</h3>
+      ${Object.entries(status).map(([k, n]) => `<div class="hb"><span class="lab">${esc(k)}</span><span class="t"><i data-w="${n / reports.length * 100}" style="background:var(--cobalt)"></i></span><b>${n}건</b></div>`).join('')}</div>
+  </div>`;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    v.querySelectorAll('[data-w]').forEach(e => e.style.width = e.dataset.w + '%');
+    v.querySelectorAll('[data-l]').forEach(e => e.style.left = `calc(${e.dataset.l}% - 1px)`);
+    v.querySelectorAll('[data-h]').forEach(e => e.style.height = e.dataset.h + '%');
+  }));
+}
+
+// 정리된 텍스트: 리포트별 카드 또는 하나로 모은 전체 텍스트
+function asText(r) {
+  return `[${r.doc_no}] ${r.product} / ${r.defect_type}
+작성일 ${r.created_date}, 발견일 ${r.found_date}, 부서 ${r.department}, 작성자 ${r.author}
+결재: ${r.approval}
+불량률 ${r.defect_rate}% (생산 ${fmtNum(r.production_qty)}대 중 ${fmtNum(r.defect_qty)}대), 심각 Level ${r.severity}, 재현율 ${r.reproduction_rate ?? '-'}%, 조치 상태 ${r.status}
+요약: ${r.summary}
+원인: ${r.cause}
+재현 방법: ${r.reproduction_steps.map((s, i) => `${i + 1}) ${s}`).join(' ')}
+개선 방법: ${r.improvement}
+결과: ${r.result}${r.improved_defect_rate != null ? ` (개선 후 불량률 ${r.improved_defect_rate}%)` : ''}`;
+}
+function renderDetail(v, pre) {
+  const tools = `<div class="det-tools"><div class="seg" role="group" aria-label="보기 방식">
+      <button data-m="cards" aria-pressed="${detMode === 'cards'}">리포트별</button><button data-m="all" aria-pressed="${detMode === 'all'}">하나로 모아 보기</button></div>
+      ${detMode === 'all' ? '<button class="btn ghost sm" id="copyAll">전체 복사</button>' : ''}</div>`;
+  const body = detMode === 'all'
+    ? `<div class="alltext" id="allText">${esc(reports.map(asText).join('\n\n'))}</div>`
+    : reports.map(r => `<details class="rep"><summary><span class="lv" style="background:${LVC[r.severity] || '#fff'}">Level ${r.severity}</span>${esc(r.defect_type)}<small>${esc(r.product)}, ${esc(r.doc_no)}</small></summary>
+      <div class="in"><p>${esc(r.summary)}</p><dl>
+        <dt>불량률</dt><dd>${r.defect_rate}% (생산 ${fmtNum(r.production_qty)}대 중 ${fmtNum(r.defect_qty)}대)</dd>
+        <dt>재현율</dt><dd>${r.reproduction_rate ?? '-'}%</dd><dt>조치 상태</dt><dd>${esc(r.status)}</dd>
+        <dt>결재</dt><dd>${esc(r.approval)}</dd><dt>원인</dt><dd>${esc(r.cause)}</dd>
+        <dt>재현 방법</dt><dd><ol>${r.reproduction_steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol></dd>
+        <dt>개선 방법</dt><dd>${esc(r.improvement)}</dd><dt>결과</dt><dd>${esc(r.result)}</dd>
+        <dt>원본</dt><dd>${esc(r.file)}, 작성 ${esc(r.created_date)}, ${esc(r.department)} ${esc(r.author)}</dd></dl></div></details>`).join('');
+  v.innerHTML = pre + tools + body;
+  v.querySelector('.seg').onclick = e => { const b = e.target.closest('button'); if (b) { detMode = b.dataset.m; render(); } };
+  const c = v.querySelector('#copyAll'); if (c) c.onclick = async () => { try { await navigator.clipboard.writeText($('#allText').textContent); c.textContent = '복사됨'; } catch { c.textContent = '복사 실패'; } };
+}
+
+// ── 챗봇: 분석 데이터와 함께 질문을 보내고 답을 실시간으로 받는다
+function resetChat() {
+  $('#msgs').innerHTML = '<div class="msg bot">리포트 분석이 끝나면 불량 데이터에 대해 무엇이든 물어보세요.</div>';
+  $('#ci').disabled = $('#cs').disabled = true; $('#chips').innerHTML = '';
+}
+function enableChat() {
+  $('#ci').disabled = $('#cs').disabled = false; $('#ci').placeholder = '불량 데이터에 대해 물어보세요';
+  $('#msgs').innerHTML = `<div class="msg bot">리포트 ${reports.length}건을 읽었어요. 궁금한 점을 물어보세요.</div>`;
+  $('#chips').innerHTML = ['가장 심각한 불량은?', '갤러리 S 불량만 요약해 줘', '개선 효과가 가장 큰 건?', '재현율이 높은 순서로 알려 줘']
+    .map(t => `<button class="chip" type="button">${t}</button>`).join('');
+}
+const md = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+let chatting = false;
+async function ask(q) {
+  if (chatting || !reports.length) return;
+  chatting = true; $('#cs').disabled = true;
+  const m = $('#msgs');
+  m.insertAdjacentHTML('beforeend', `<div class="msg user">${esc(q)}</div>`);
+  const b = document.createElement('div'); b.className = 'msg bot caret'; m.append(b); m.scrollTop = 1e9;
+  history.push({ role: 'user', content: q });
+  let text = '';
+  try {
+    const res = await api('/api/dashboard/chat', { json: { reports, summary, messages: history } });
+    await readSSE(res, ev => {
+      if (ev.t) { text += ev.t; b.innerHTML = md(text); m.scrollTop = 1e9; }
+      if (ev.error) throw new App.ApiError(ev.error, ev.detail);
+    });
+    history.push({ role: 'assistant', content: text });
+  } catch (e) {
+    history.pop();
+    b.className = 'msg err'; b.innerHTML = `<b>${esc(e.message)}</b>${e.detail ? `<code>${esc(e.detail)}</code>` : ''}`;
+  }
+  b.classList.remove('caret'); chatting = false; $('#cs').disabled = false; m.scrollTop = 1e9;
+}
+$('#cf').onsubmit = e => { e.preventDefault(); const q = $('#ci').value.trim(); if (q) { $('#ci').value = ''; ask(q); } };
+$('#chips').onclick = e => { const c = e.target.closest('.chip'); if (c) ask(c.textContent); };
+
+drawFiles(); render();
+</script>
+</body>
+</html>

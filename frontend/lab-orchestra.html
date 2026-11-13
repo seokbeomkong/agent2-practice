@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent Orchestration 학습 앱</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/common.css">
+<style>
+  .layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;padding:0 20px 32px;align-items:start}
+  .right{display:grid;gap:20px;min-width:0}
+  .result{margin:0 12px 12px;padding:14px;border-radius:8px;border:2px solid var(--ink);background:#fff;min-height:56px;white-space:pre-wrap;font-size:17px}
+  .result.empty{color:var(--muted);font-size:15px}
+  .samples{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+  .logbox{height:420px;overflow:auto}
+  .log .row{border-left-width:4px}
+
+  /* 단계 켜기/끄기 */
+  .steps{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:12px 16px;border-bottom:2px solid var(--ink);background:#fff}
+  .steps > b{font-size:14px;margin-right:2px}
+  .tg{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--ink);border-radius:99px;padding:4px 12px 4px 5px;background:#fff;font-weight:700;font-size:14px;cursor:pointer}
+  .tg .sw{width:32px;height:18px;border-radius:99px;border:2px solid var(--ink);background:var(--line);position:relative;transition:background .15s}
+  .tg .sw::after{content:"";position:absolute;top:1px;left:1px;width:12px;height:12px;border-radius:50%;background:#fff;border:1.5px solid var(--ink);transition:transform .15s}
+  .tg[aria-checked=true] .sw{background:var(--mint)}
+  .tg[aria-checked=true] .sw::after{transform:translateX(14px)}
+  .tg[aria-checked=false]{color:var(--muted)}
+  .tg:disabled{opacity:.45;cursor:not-allowed}
+  .steps .hint{font-size:13px;color:var(--muted);margin-left:auto}
+
+  /* 노드 팝업 */
+  .stage-bg{position:relative}
+  .npop{position:absolute;z-index:5;width:min(380px,calc(100% - 24px));max-height:calc(100% - 24px);display:flex;flex-direction:column;
+        background:#fff;border:2px solid var(--ink);border-radius:12px;box-shadow:5px 5px 0 var(--ink);animation:npop .15s ease-out}
+  @keyframes npop{from{transform:scale(.96);opacity:0}}
+  .npop[hidden]{display:none}
+  .npop .ph{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:2px solid var(--ink);background:var(--gold);border-radius:10px 10px 0 0}
+  .npop .ph b{font:400 1.15rem var(--display)}
+  .npop .ph small{color:var(--ink);opacity:.75}
+  .npop .st{margin-left:auto;font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;border:1.5px solid var(--ink);background:#fff}
+  .npop .st.work{background:var(--mint);color:#fff} .npop .st.off{background:#E4DDFF;color:var(--muted)}
+  .npop .x{border:0;background:none;font-size:20px;line-height:1;cursor:pointer;padding:2px 4px}
+  .npop .pt{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;font-size:14px}
+  .npop .pt small{color:var(--muted)}
+  .npop .pb{overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0}
+  .npop .ent{flex:none}
+  .npop .ent{border:2px solid var(--ink);border-radius:8px;overflow:hidden}
+  .npop .ent .eh{display:flex;justify-content:space-between;gap:8px;padding:5px 10px;font-size:12px;font-weight:700;border-bottom:1.5px solid var(--ink);background:#E8F4FF}
+  .npop .ent.out .eh{background:#C9F5E3} .npop .ent.note .eh{background:#FFF1A8}
+  .npop .ent .eh span{font-weight:500;color:var(--muted);font-family:var(--mono)}
+  .npop .ent p{padding:8px 10px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65;margin:0}
+  .npop .none{color:var(--muted);font-size:14px}
+  @media(max-width:980px){.layout{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<script src="assets/common.js"></script>
+<script src="assets/graph.js"></script>
+<script>
+const lab = App.LABS.find(l => l.id === 'orchestra');
+App.mountBar(lab.title, lab.ch);
+App.mountHead(lab, '사람의 요청을 Orchestrator Agent가 받아 하위 Agent를 Latte → Cat → Emoji 순서로 부릅니다. Latte Agent는 <b>Subagent</b>(Deep Agents의 task 도구), Cat Agent는 <b>MCP 서버에 붙은 Tool</b>, Emoji Agent는 독립된 Deep Agent를 <b>Tool</b>로 호출해요. Emoji Agent는 Feedback Agent와 <b>A2A</b> 표준 4단계(명함 확인 → 부탁 쪽지 → 진행 상황 → 결과 받기)로 통신하며, 피드백을 받아 최대 3번까지 고칩니다.<br><br>교안처럼 단계별로 따라 해 보려면 그래프 위의 스위치로 Agent를 켜고 꺼 보세요. 꺼진 Agent는 Orchestrator가 부르지 않습니다. 노드를 누르면 그 Agent가 받은 요청과 결과 전체를 볼 수 있어요.', true);
+</script>
+
+<main class="layout">
+  <section class="panel" aria-label="동작 그래프">
+    <div class="panel-h">동작 그래프</div>
+    <div class="steps" id="steps"><b>단계 구성</b></div>
+    <div class="stage-bg" id="stage">
+      <svg id="g" role="img" aria-label="Agent 연결 그래프"></svg>
+      <div class="npop" id="pop" hidden role="dialog" aria-modal="false" aria-labelledby="popTitle"></div>
+    </div>
+  </section>
+
+  <div class="right">
+    <section class="panel">
+      <div class="panel-h">프롬프트</div>
+      <form class="composer" id="cf" style="border:0"><input id="ci" value="내일 휴가 쓰겠습니다" aria-label="문장 입력" maxlength="200"><button class="btn blue" id="run">실행</button></form>
+      <div class="samples" id="samples"></div>
+      <div class="result empty" id="result" aria-live="polite">실행하면 최종 결과가 여기에 나와요.</div>
+    </section>
+    <section class="panel">
+      <div class="panel-h">주고받은 내용 요약</div>
+      <div class="logbox"><div class="log" id="log"><p class="log-empty" id="lg0">아직 실행 기록이 없어요.</p></div></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const { $, esc, api, readSSE, nowTime } = App;
+let G, NODES = {}, COLORS = {}, KIND = {}, running = false, openId = null;
+const OFF = new Set();             // 꺼 둔 Agent
+const DETAILS = {};                // Agent별 받은 요청·결과 전체 기록
+const WORKING = new Set();
+['내일 휴가 쓰겠습니다', '오늘 점심 뭐 먹지', '내일 회의 못 감'].forEach(t => $('#samples').insertAdjacentHTML('beforeend', `<button class="chip" type="button">${t}</button>`));
+$('#samples').onclick = e => { const c = e.target.closest('.chip'); if (c) $('#ci').value = c.textContent; };
+
+// 그래프는 서버가 보낸 노드/연결로만 그린다
+(async () => {
+  try {
+    const data = await (await api('/api/orchestra/graph')).json();
+    G = AgentGraph.create($('#g'), data, { width: 760, height: 460, onNodeClick: togglePopup });
+    data.nodes.forEach(n => { NODES[n.id] = n; COLORS[n.id] = G.nodes[n.id].color; DETAILS[n.id] = []; });
+    data.links.forEach(l => { KIND[l.from + '>' + l.to] = KIND[l.to + '>' + l.from] = l.kind; });
+    drawSteps();
+  } catch (e) { $('#g').outerHTML = `<div class="alert"><b>${esc(e.message)}</b><code>${esc(e.detail)}</code></div>`; }
+})();
+
+// ── 단계 켜기/끄기
+const effectivelyOff = id => OFF.has(id) || !!(NODES[id]?.requires && OFF.has(NODES[id].requires));
+function drawSteps() {
+  const items = Object.values(NODES).filter(n => n.toggleable);
+  $('#steps').innerHTML = '<b>단계 구성</b>' + items.map(n => {
+    const blocked = !!(n.requires && OFF.has(n.requires));
+    return `<button type="button" class="tg" role="switch" data-id="${n.id}" aria-checked="${!effectivelyOff(n.id)}" ${running || blocked ? 'disabled' : ''}
+      title="${blocked ? `${esc(NODES[n.requires].name)} Agent가 켜져 있어야 쓸 수 있어요` : `${esc(n.name)} Agent 켜기/끄기`}"><span class="sw"></span>${esc(n.name)}</button>`;
+  }).join('');
+  Object.keys(NODES).forEach(id => G.setOff(id, effectivelyOff(id)));
+  if (openId) renderPopup();
+}
+function setAgent(id, on) { if (running) return; on ? OFF.delete(id) : OFF.add(id); drawSteps(); }
+$('#steps').onclick = e => { const b = e.target.closest('.tg'); if (b && !b.disabled) setAgent(b.dataset.id, b.getAttribute('aria-checked') !== 'true'); };
+
+// ── 노드 팝업: 같은 노드를 다시 누르면 닫힌다
+function togglePopup(id) {
+  if (openId === id) return closePopup();
+  openId = id; G.setSelected(id); renderPopup(); placePopup();
+}
+function closePopup() { const was = openId; openId = null; G.setSelected(null); $('#pop').hidden = true; if (was) document.querySelector('#n-' + was)?.focus(); }
+const KIND_KO = { in: '받음', out: '결과', note: '판단' };
+function renderPopup() {
+  const n = NODES[openId], pop = $('#pop'), list = DETAILS[openId] || [];
+  const off = effectivelyOff(openId), work = WORKING.has(openId);
+  const blocked = !!(n.requires && OFF.has(n.requires));
+  const keep = pop.querySelector('.pb')?.scrollTop;
+  pop.innerHTML = `
+    <div class="ph"><b id="popTitle">${esc(n.name)}</b><small>${esc(n.role || '')}</small>
+      <span class="st ${off ? 'off' : work ? 'work' : ''}">${off ? '꺼짐' : work ? '작업 중' : '대기'}</span>
+      <button class="x" type="button" aria-label="닫기">×</button></div>
+    ${n.toggleable ? `<div class="pt"><button type="button" class="tg" role="switch" aria-checked="${!off}" ${running || blocked ? 'disabled' : ''}><span class="sw"></span>이 Agent 사용</button>
+      <small>${blocked ? `${esc(NODES[n.requires].name)} Agent가 켜져 있어야 쓸 수 있어요` : running ? '실행 중에는 바꿀 수 없어요' : '다음 실행부터 적용돼요'}</small></div>` : ''}
+    <div class="pb">${list.length ? list.map(d => `<div class="ent ${d.kind}"><div class="eh">${KIND_KO[d.kind] || ''} · ${esc(d.title)}<span>${d.time}</span></div><p>${esc(d.text)}</p></div>`).join('')
+      : `<p class="none">${off ? '이 Agent는 꺼져 있어요. 켜면 다음 실행부터 참여합니다.' : '아직 기록이 없어요. 실행하면 받은 요청과 결과가 여기에 쌓여요.'}</p>`}</div>`;
+  pop.hidden = false;
+  if (keep != null) pop.querySelector('.pb').scrollTop = keep;
+  pop.querySelector('.x').onclick = closePopup;
+  pop.querySelector('.pt .tg')?.addEventListener('click', e => setAgent(openId, e.currentTarget.getAttribute('aria-checked') !== 'true'));
+}
+// 노드 옆(공간이 넓은 쪽)에 붙이고 그래프 영역 안으로 맞춘다
+function placePopup() {
+  const stage = $('#stage').getBoundingClientRect(), p = G.screenPos(openId), pop = $('#pop');
+  const w = pop.offsetWidth, h = pop.offsetHeight, pad = 12;
+  const nx = p.x - stage.left, ny = p.y - stage.top;
+  let x = nx + p.r + 16 + w <= stage.width - pad ? nx + p.r + 16 : nx - p.r - 16 - w;
+  x = Math.max(pad, Math.min(stage.width - w - pad, x));
+  const y = Math.max(pad, Math.min(stage.height - h - pad, ny - 60));
+  pop.style.left = x + 'px'; pop.style.top = y + 'px';
+}
+addEventListener('resize', () => openId && placePopup());
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && openId) closePopup(); });
+
+function addDetail(agent, title, text, kind) {
+  if (!DETAILS[agent]) return;
+  DETAILS[agent].push({ title, text, kind, time: nowTime() });
+  G.setBadge(agent, DETAILS[agent].length);
+  if (openId === agent) renderPopup();
+}
+
+function log(who, to, text, kind, extra = '') {
+  $('#lg0')?.remove();
+  const row = document.createElement('div'); row.className = 'row';
+  row.style.borderColor = COLORS[who] === '#FFD400' ? '#C9A400' : (COLORS[who] || 'var(--line)');
+  row.innerHTML = `<span class="who">${esc(NODES[who]?.name || who)}${to ? ` <span style="font-weight:400;color:var(--muted)">에서</span> ${esc(NODES[to]?.name || to)}` : ''}${kind ? `<span class="badge ${kind}">${{ request: '요청', tool: 'Tool', mcp: 'MCP', subagent: 'Subagent', a2a: 'A2A' }[kind] || kind}</span>` : ''}</span>
+    <span class="t">${nowTime()}</span><span class="what">${esc(text)}</span>${extra}`;
+  $('#log').append(row); $('#log').parentElement.scrollTop = 1e9;
+}
+const stagesHtml = n => `<span class="sub"><span class="stages">${['명함 확인', '부탁 쪽지', '진행 상황', '결과 받기'].map((s, i) => `<span class="${i + 1 === n ? 'cur' : ''}">${i + 1}단계 ${s}</span>`).join('')}</span></span>`;
+
+// 서버 이벤트를 하나씩 재생한다
+const play = AgentGraph.player(async ev => {
+  if (ev.type === 'status') {
+    ev.state === 'working' ? WORKING.add(ev.agent) : WORKING.delete(ev.agent);
+    G.setOn(ev.agent, ev.state === 'working'); if (openId === ev.agent) renderPopup(); return;
+  }
+  if (ev.type === 'detail') return addDetail(ev.agent, ev.title, ev.text, ev.kind);
+  if (ev.type === 'call') {
+    log(ev.from, ev.to, ev.text, KIND[ev.from + '>' + ev.to]);
+    if (ev.from === 'human') addDetail('human', '보낸 문장', ev.text, 'out');
+    await G.travel(ev.from, ev.to);
+    return;
+  }
+  if (ev.type === 'log') return log(ev.agent, null, ev.text);
+  if (ev.type === 'a2a_stage') {
+    log(ev.from, ev.to, `${ev.label}${ev.text ? ': ' + ev.text : ''}`, 'a2a', stagesHtml(ev.stage));
+    if (ev.stage !== 3 || ev.text === '완료') await G.travel(ev.from, ev.to, 500);
+    return;
+  }
+  if (ev.type === 'result') { addDetail('human', '받은 결과', ev.text, 'in'); $('#result').className = 'result'; $('#result').textContent = ev.text; return; }
+  if (ev.type === 'error') {
+    $('#result').className = 'result'; $('#result').innerHTML = `<b>${esc(ev.message)}</b><code style="display:block;font:12px var(--mono);color:var(--muted);margin-top:6px">${esc(ev.detail || '')}</code>`;
+    return;
+  }
+  if (ev.type === 'done') {
+    G.clear(); WORKING.clear(); running = false; drawSteps();
+    $('#run').disabled = false; $('#run').textContent = '실행';
+  }
+});
+
+$('#cf').onsubmit = async e => {
+  e.preventDefault();
+  const prompt = $('#ci').value.trim(); if (!prompt || running || !G) return;
+  running = true; drawSteps();
+  $('#run').disabled = true; $('#run').textContent = '실행 중';
+  $('#log').innerHTML = ''; $('#result').className = 'result empty'; $('#result').textContent = 'Agent들이 일하고 있어요.'; G.clear();
+  Object.keys(DETAILS).forEach(id => { DETAILS[id] = []; G.setBadge(id, 0); });
+  if (openId) renderPopup();
+  try {
+    const res = await api('/api/orchestra/run', { json: { prompt, disabled: [...OFF] } });
+    await readSSE(res, ev => play.push(ev));
+  } catch (err) { play.push({ type: 'error', message: err.message, detail: err.detail }); play.push({ type: 'done' }); }
+};
+</script>
+</body>
+</html>

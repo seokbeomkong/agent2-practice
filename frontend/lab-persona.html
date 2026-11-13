@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>페르소나 챗봇</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/common.css">
+<style>
+  .layout{display:grid;grid-template-columns:250px minmax(0,1fr) 300px;gap:20px;padding:0 20px 32px;align-items:start}
+  .pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;padding:12px}
+  .pcard{border:2px solid var(--ink);border-radius:10px;background:#fff;padding:10px 6px 8px;text-align:center;cursor:pointer;display:grid;justify-items:center;gap:6px;font-weight:700;font-size:14px}
+  .pcard[aria-current=true]{background:var(--ink);color:#fff;box-shadow:3px 3px 0 var(--cobalt)}
+  .av{width:42px;height:42px;border-radius:50%;border:2px solid var(--ink);display:grid;place-items:center;font:400 18px var(--display);color:#14101F;flex:none}
+  .av.sm{width:30px;height:30px;font-size:14px}
+  .sect{padding:10px 16px 4px;font-size:13px;font-weight:700;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+  .chats{list-style:none;margin:0;padding:0 8px 8px;max-height:300px;overflow:auto}
+  .chats button{width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+  .chats button:hover{background:var(--paper)} .chats button[aria-current=true]{color:var(--ink);font-weight:700;background:var(--paper)}
+  .chat{height:680px}
+  .who{display:flex;align-items:center;gap:10px}
+  .head-btns{display:flex;gap:6px}
+  .turn{align-self:flex-start;max-width:92%;display:grid;gap:8px}
+  .think{border:2px dashed var(--ink);border-radius:10px;background:var(--paper);font-size:13px}
+  .think summary{cursor:pointer;padding:6px 10px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .think .tbody{padding:0 10px 8px;display:grid;gap:6px}
+  .think .tt{color:var(--muted);white-space:pre-wrap;font-style:italic}
+  .step{display:grid;grid-template-columns:14px 1fr;gap:6px}
+  .step i{width:10px;height:10px;border-radius:50%;margin-top:5px;border:2px solid var(--ink);background:var(--gold)}
+  .step.result i{background:var(--mint)}
+  .step small{display:block;font:12px var(--mono);color:var(--muted);overflow-wrap:anywhere}
+  .spin{width:14px;height:14px;border:2.5px solid var(--ink);border-right-color:transparent;border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .turn .msg.bot{max-width:none}
+  .msg.err{background:#fff;border-left:8px solid var(--coral)}
+  .msg.err code{display:block;font:12px var(--mono);color:var(--muted)}
+  .side{display:grid;gap:20px}
+  .mem{white-space:pre-wrap;font-size:13px;background:#fff;border:2px solid var(--ink);border-radius:8px;padding:10px;max-height:260px;overflow:auto;margin:0}
+  .skills{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:13px}
+  .skills li{border:2px solid var(--ink);border-radius:8px;padding:8px 10px;background:#fff}
+  .skills b{display:flex;justify-content:space-between;gap:6px}
+  .skills .on{color:var(--mint)} .skills .off{color:var(--muted)}
+  .hint{font-size:13px;color:var(--muted)}
+  dialog{border:2px solid var(--ink);border-radius:12px;padding:0;width:min(520px,92vw);box-shadow:6px 6px 0 var(--ink)}
+  dialog::backdrop{background:rgba(20,16,31,.5)}
+  dialog form{padding:20px;display:grid;gap:12px}
+  dialog label{font-weight:700;display:grid;gap:6px}
+  dialog input,dialog textarea{border:2px solid var(--ink);border-radius:6px;padding:10px 12px;resize:vertical}
+  dialog .row{display:flex;gap:8px;justify-content:flex-end}
+  @media(max-width:1240px){.layout{grid-template-columns:240px minmax(0,1fr)}.side{grid-column:1/-1;grid-template-columns:1fr 1fr}}
+  @media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr)}.side{grid-template-columns:1fr}.chat{height:560px}}
+</style>
+</head>
+<body>
+<script src="assets/common.js"></script>
+<script>
+const lab = App.LABS.find(l => l.id === 'persona');
+App.mountBar(lab.title, lab.ch);
+App.mountHead(lab, '캐릭터마다 시스템 프롬프트(성격)가 다른 Deep Agents 챗봇입니다. Agent는 질문을 읽고 필요하면 스스로 Tool을 골라 써요. "지금 몇 시야?"엔 <b>현재 시각 Tool</b>, "카드로 만들어 줘"엔 <b>HTML 문서 Tool</b>을 씁니다. GitHub 주소를 주면 <b>Skill</b>을 설치하고, 대화로 켜고 끌 수 있어요. 대화에서 알게 된 정보는 캐릭터별 <b>Memory</b>(AGENTS.md)에 저장되어 새 대화에서도, 서버를 다시 켜도 기억합니다. 채팅 기록은 txt 파일로 저장돼요. 말풍선 위의 "생각하는 과정"에서 Agent의 생각과 도구 사용을 실시간으로 볼 수 있습니다.', true);
+</script>
+
+<main class="layout">
+  <aside class="panel" aria-label="캐릭터와 대화 목록">
+    <div class="panel-h">캐릭터 <button class="btn ghost sm" id="addP">추가</button></div>
+    <div class="pick" id="pick"></div>
+    <div class="sect">최근 대화 <button class="btn ghost sm" id="newChat">새 대화</button></div>
+    <ul class="chats" id="chats"></ul>
+  </aside>
+
+  <section class="panel chat" aria-label="대화">
+    <div class="panel-h"><div class="who" id="who"></div><div class="head-btns"><button class="btn ghost sm" id="editP">성격 편집</button><button class="btn ghost sm" id="delP">삭제</button></div></div>
+    <div class="msgs" id="msgs" aria-live="polite"></div>
+    <div class="chips" id="chips"></div>
+    <form class="composer" id="cf"><input id="ci" placeholder="메시지를 입력하세요" aria-label="메시지 입력" autocomplete="off"><button class="btn blue" id="cs">보내기</button></form>
+  </section>
+
+  <aside class="side" aria-label="Agent 기억과 Skill">
+    <section class="panel"><div class="panel-h">이 캐릭터의 기억 <small style="font-weight:400;color:var(--muted)">AGENTS.md</small></div><div class="panel-b"><pre class="mem" id="mem">불러오는 중</pre></div></section>
+    <section class="panel"><div class="panel-h">설치된 Skill</div><div class="panel-b"><ul class="skills" id="skills"></ul>
+      <p class="hint" style="margin-top:10px">대화로 설치하고 켜고 끌 수 있어요. 예: "이 스킬 설치해 줘 https://github.com/anthropics/skills/tree/main/skills/brand-guidelines"</p></div></section>
+  </aside>
+</main>
+
+<dialog id="dlg"><form method="dialog" id="df">
+  <h2 id="dt" style="font-size:1.3rem">캐릭터 추가</h2>
+  <label>이름<input id="dn" required maxlength="20" placeholder="예: 탐정"></label>
+  <label>성격 (시스템 프롬프트)<textarea id="dp" rows="6" required placeholder="예: 너는 모든 말을 추리 소설 문체로 하는 탐정이다."></textarea></label>
+  <div class="row"><button class="btn ghost" value="cancel" formnovalidate>취소</button><button class="btn blue" value="ok">저장</button></div>
+</form></dialog>
+
+<script>
+const { $, esc, api, readSSE } = App;
+let personas = [], cur = null, chatId = null, busy = false, editing = null;
+const TOOL_KO = { get_current_time: '현재 시각 확인', create_html: 'HTML 문서 만들기', install_skill: 'Skill 설치', manage_skills: 'Skill 관리',
+  edit_file: '파일 수정', write_file: '파일 쓰기', read_file: '파일 읽기', ls: '폴더 보기', glob: '파일 찾기', grep: '내용 찾기', write_todos: '할 일 정리', task: 'Subagent 호출' };
+// 답변 속 문서 링크를 누를 수 있게 바꾼다
+const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(\/api\/persona\/html\/[a-f0-9]+\.html)/g, '<a href="$1" target="_blank" rel="noopener">문서 열기</a>');
+
+async function loadPersonas(selectId) {
+  personas = await (await api('/api/persona/personas')).json();
+  cur = personas.find(p => p.id === (selectId || cur?.id)) || personas[0] || null;
+  drawPersonas();
+  if (cur) await selectPersona(cur.id, true);
+}
+function drawPersonas() {
+  $('#pick').innerHTML = personas.map(p => `<button class="pcard" data-p="${p.id}" aria-current="${p === cur}"><span class="av" style="background:${p.color}">${esc(p.name[0])}</span>${esc(p.name)}</button>`).join('');
+  $('#who').innerHTML = cur ? `<span class="av sm" style="background:${cur.color}">${esc(cur.name[0])}</span><span>${esc(cur.name)}</span>` : '캐릭터를 추가해 주세요';
+  $('#editP').disabled = $('#delP').disabled = !cur;
+}
+async function selectPersona(pid, keepChat) {
+  cur = personas.find(p => p.id === pid); drawPersonas();
+  if (!keepChat) chatId = null;
+  await Promise.all([loadChats(), loadMemory(), loadSkills()]);
+  if (chatId) await openChat(chatId); else showEmpty();
+}
+async function loadChats() {
+  const list = await (await api(`/api/persona/${cur.id}/chats`)).json();
+  $('#chats').innerHTML = list.map(c => `<li><button data-c="${c.id}" aria-current="${c.id === chatId}">${esc(c.title)}</button></li>`).join('')
+    || '<li style="padding:6px 10px;font-size:14px;color:var(--muted)">아직 대화가 없어요</li>';
+}
+async function loadMemory() { try { $('#mem').textContent = (await (await api(`/api/persona/${cur.id}/memory`)).json()).text; } catch { $('#mem').textContent = ''; } }
+async function loadSkills() {
+  const list = await (await api('/api/persona/skills')).json();
+  $('#skills').innerHTML = list.map(s => `<li><b>${esc(s.name)}<span class="${s.enabled ? 'on' : 'off'}">${s.enabled ? '켜짐' : '꺼짐'}</span></b>${esc(s.description)}</li>`).join('')
+    || '<li style="border-style:dashed;color:var(--muted)">아직 설치된 Skill이 없어요.</li>';
+}
+function showEmpty() {
+  $('#msgs').innerHTML = `<div class="msg bot">${esc(cur.name)}와(과) 새 대화를 시작해요. 아래 예시를 눌러 봐도 좋아요.</div>`;
+  $('#chips').innerHTML = ['지금 몇 시야?', '내 이름은 민코딩이야. 기억해 줘', '내 이름 기억해?',
+    '현재 시각을 알려 주는 작은 카드 디자인을 html 문서로 보여 줘',
+    'brand-guidelines 스킬 설치해 줘 https://github.com/anthropics/skills/tree/main/skills/brand-guidelines']
+    .map(t => `<button class="chip" type="button">${esc(t.length > 40 ? t.slice(0, 38) + '…' : t)}</button>`).join('');
+  $('#chips').dataset.full = JSON.stringify(['지금 몇 시야?', '내 이름은 민코딩이야. 기억해 줘', '내 이름 기억해?',
+    '현재 시각을 알려 주는 작은 카드 디자인을 html 문서로 보여 줘', 'brand-guidelines 스킬 설치해 줘 https://github.com/anthropics/skills/tree/main/skills/brand-guidelines']);
+}
+async function openChat(cid) {
+  chatId = cid; await loadChats();
+  const msgs = await (await api(`/api/persona/${cur.id}/chats/${cid}`)).json();
+  $('#msgs').innerHTML = '';
+  msgs.forEach(m => {
+    if (m.role === 'user') return addUser(m.content);
+    const t = addTurn(false);
+    (m.steps || []).forEach(s => addStep(t, s.kind === 'tool' ? 'tool_call' : 'tool_result', s));
+    if (!(m.steps || []).length) t.think.remove();
+    t.body.innerHTML = fmt(m.content);
+  });
+  $('#msgs').scrollTop = 1e9;
+}
+
+function addUser(text) { $('#msgs').insertAdjacentHTML('beforeend', `<div class="msg user">${esc(text)}</div>`); $('#msgs').scrollTop = 1e9; }
+// 봇 차례: [생각하는 과정(접이식)] + [답변 말풍선]
+function addTurn(live) {
+  const wrap = document.createElement('div'); wrap.className = 'turn';
+  wrap.innerHTML = `<details class="think" ${live ? 'open' : ''}><summary>${live ? '<i class="spin"></i>' : ''}<span>생각하는 과정</span></summary><div class="tbody"><div class="tt"></div></div></details><div class="msg bot"></div>`;
+  $('#msgs').append(wrap);
+  return { wrap, think: wrap.querySelector('.think'), tt: wrap.querySelector('.tt'), tbody: wrap.querySelector('.tbody'), body: wrap.querySelector('.msg') };
+}
+function addStep(t, type, s) {
+  const isCall = type === 'tool_call';
+  const detail = isCall ? Object.entries(s.args || {}).map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`).join(', ') : s.text;
+  t.tbody.insertAdjacentHTML('beforeend', `<div class="step ${isCall ? '' : 'result'}"><i></i><div>${isCall ? 'Tool 사용' : '결과'}: ${esc(TOOL_KO[s.name] || s.name)}<small>${esc(detail || '')}</small></div></div>`);
+}
+
+async function send(text) {
+  if (busy || !cur || !text.trim()) return;
+  busy = true; $('#cs').disabled = true; $('#chips').innerHTML = '';
+  if (!chatId) $('#msgs').innerHTML = '';
+  addUser(text);
+  const t = addTurn(true); let answer = '', thinking = '';
+  try {
+    const res = await api('/api/persona/chat', { json: { persona_id: cur.id, chat_id: chatId, message: text } });
+    await readSSE(res, ev => {
+      if (ev.type === 'chat') chatId = ev.chat_id;
+      else if (ev.type === 'thinking') { thinking += ev.t; t.tt.textContent = thinking; }
+      else if (ev.type === 'tool_call' || ev.type === 'tool_result') addStep(t, ev.type, ev);
+      else if (ev.type === 'text') { answer += ev.t; t.body.innerHTML = fmt(answer); }
+      else if (ev.type === 'final') t.body.innerHTML = fmt(ev.text);
+      else if (ev.type === 'memory') $('#mem').textContent = ev.text;
+      else if (ev.type === 'error') { t.body.className = 'msg err'; t.body.innerHTML = `<b>${esc(ev.message)}</b><code>${esc(ev.detail || '')}</code>`; }
+      $('#msgs').scrollTop = 1e9;
+    });
+  } catch (e) { t.body.className = 'msg err'; t.body.innerHTML = `<b>${esc(e.message)}</b><code>${esc(e.detail || '')}</code>`; }
+  t.think.querySelector('.spin')?.remove();
+  if (!thinking && !t.tbody.querySelector('.step')) t.think.remove(); else t.think.open = false;
+  busy = false; $('#cs').disabled = false;
+  loadChats(); loadMemory(); loadSkills();
+}
+
+$('#pick').onclick = e => { const b = e.target.closest('[data-p]'); if (b && !busy) selectPersona(b.dataset.p); };
+$('#chats').onclick = e => { const b = e.target.closest('[data-c]'); if (b && !busy) openChat(b.dataset.c); };
+$('#newChat').onclick = () => { if (busy || !cur) return; chatId = null; loadChats(); showEmpty(); };
+$('#cf').onsubmit = e => { e.preventDefault(); const q = $('#ci').value.trim(); if (q) { $('#ci').value = ''; send(q); } };
+$('#chips').onclick = e => { const c = e.target.closest('.chip'); if (!c) return; const full = JSON.parse($('#chips').dataset.full || '[]'); send(full[[...$('#chips').children].indexOf(c)] || c.textContent); };
+
+// 캐릭터 추가 / 편집 / 삭제
+function openDlg(p) { editing = p; $('#dt').textContent = p ? '성격 편집' : '캐릭터 추가'; $('#dn').value = p?.name || ''; $('#dp').value = p?.prompt || ''; $('#dlg').showModal(); }
+$('#addP').onclick = () => openDlg(null); $('#editP').onclick = () => cur && openDlg(cur);
+$('#dlg').addEventListener('close', async () => {
+  if ($('#dlg').returnValue !== 'ok') return;
+  const body = { name: $('#dn').value.trim(), prompt: $('#dp').value.trim() }; if (!body.name || !body.prompt) return;
+  const p = await (await api(editing ? `/api/persona/personas/${editing.id}` : '/api/persona/personas', { json: body, method: editing ? 'PUT' : 'POST' })).json();
+  if (!editing) chatId = null;
+  await loadPersonas(p.id);
+});
+$('#delP').onclick = async () => {
+  if (!cur || busy || !confirm(`'${cur.name}' 캐릭터와 대화 기록, 기억을 모두 지울까요?`)) return;
+  await api(`/api/persona/personas/${cur.id}`, { method: 'DELETE' }); cur = null; chatId = null; await loadPersonas();
+};
+
+loadPersonas().catch(e => { $('#msgs').innerHTML = `<div class="msg err"><b>${esc(e.message)}</b><code>${esc(e.detail || '')}</code></div>`; });
+</script>
+</body>
+</html>

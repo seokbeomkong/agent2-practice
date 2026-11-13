@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>에이전트 실습실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/common.css">
+<style>
+  .gate{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:space-between;gap:48px;padding:clamp(24px,5vw,64px)}
+  .gate .brand{font:800 20px var(--display)}
+  .gate h1{font-size:clamp(2.2rem,5.2vw,4rem);font-weight:800;line-height:1.12;letter-spacing:-.025em;max-width:16ch}
+  .gate .lead{margin-top:16px;color:var(--muted);max-width:48ch;font-size:17px}
+  form{margin-top:32px;max-width:640px}
+  label{display:block;font-weight:600;margin-bottom:8px}
+  .field{display:flex;gap:8px}
+  .keybox{flex:1;min-width:0;display:flex;border:2px solid var(--ink);border-radius:10px;background:var(--white);overflow:hidden}
+  .keybox:focus-within{border-color:var(--cobalt);box-shadow:0 0 0 3px rgba(43,76,255,.2)}
+  .keybox input{flex:1;min-width:0;border:0;padding:13px 14px;background:transparent;font-family:var(--mono);font-size:15px;outline:none}
+  .keybox button{border:0;background:transparent;padding:0 14px;font-weight:600;color:var(--muted);cursor:pointer}
+  .keybox button:hover{color:var(--ink)}
+  .hint{margin-top:14px;font-size:14px;color:var(--muted)}
+  .status{margin-top:16px;min-height:24px;font-size:15px}
+  .status.err{padding:12px 14px;border-left:4px solid var(--coral);background:var(--white);border-radius:0 8px 8px 0}
+  .status.err b{display:block;margin-bottom:2px}
+  .status.err code{display:block;margin-top:6px;font:500 13px var(--mono);color:var(--muted);overflow-wrap:anywhere}
+  .status.ok{color:var(--mint);font-weight:600}
+
+  /* 잠금 → 점등: 이 페이지의 주인공 */
+  .rack{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .slot{border-radius:12px;overflow:hidden;background:var(--white);border:1px solid var(--line)}
+  .slot .pic{aspect-ratio:16/10;filter:grayscale(1) contrast(.8);opacity:.38;transition:filter .6s,opacity .6s}
+  .slot .pic svg{width:100%;height:100%;display:block}
+  .slot p{padding:9px 12px;font-size:14px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .slot p::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--line);transition:background .4s}
+  .rack.lit .slot .pic{filter:none;opacity:1}
+  .rack.lit .slot p{color:var(--ink)}
+  .rack.lit .slot p::before{background:var(--mint)}
+  .rack.lit .slot:nth-child(2) .pic,.rack.lit .slot:nth-child(2) p::before{transition-delay:.25s}
+  .rack.lit .slot:nth-child(3) .pic,.rack.lit .slot:nth-child(3) p::before{transition-delay:.5s}
+  .rack.lit .slot:nth-child(4) .pic,.rack.lit .slot:nth-child(4) p::before{transition-delay:.75s}
+  @media(max-width:720px){.rack{grid-template-columns:repeat(2,1fr)}.field{flex-direction:column}}
+</style>
+</head>
+<body>
+<main class="gate">
+  <div>
+    <div class="brand">에이전트 실습실</div>
+    <div style="margin-top:clamp(32px,8vh,88px)">
+      <h1>API 키를 연결하면 실습 네 가지가 켜집니다</h1>
+      <p class="lead">교안에서 만든 결과물을 내 키로 직접 실행해 볼 수 있어요.</p>
+
+      <form id="f" novalidate>
+        <label for="key">Claude API 키</label>
+        <div class="field">
+          <div class="keybox">
+            <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-..." aria-describedby="st">
+            <button type="button" id="eye" aria-label="키 표시">표시</button>
+          </div>
+          <button class="btn blue" id="go" type="submit">연결 테스트</button>
+        </div>
+        <p class="hint">키는 이 탭에서만 쓰이고, 탭을 닫으면 사라집니다.</p>
+        <div id="st" class="status" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </div>
+  <div class="rack" id="rack" aria-label="잠겨 있는 실습 네 가지"></div>
+</main>
+
+<script src="assets/common.js"></script>
+<script>
+const { LABS, thumbs, store, sleep, $, esc } = App;
+// 접속하면 항상 키 입력부터 시작한다. (이전에 연결한 키도 지운다)
+store.clear();
+
+$('#rack').innerHTML = LABS.map(l => `<div class="slot"><div class="pic">${thumbs[l.id]}</div><p>${esc(l.short)}</p></div>`).join('');
+
+const key = $('#key'), st = $('#st'), go = $('#go');
+$('#eye').onclick = e => {
+  const show = key.type === 'password';
+  key.type = show ? 'text' : 'password';
+  e.target.textContent = show ? '숨기기' : '표시';
+  e.target.setAttribute('aria-label', show ? '키 숨기기' : '키 표시');
+};
+
+function fail(title, detail) {
+  st.className = 'status err';
+  st.innerHTML = `<b>${esc(title)}</b>${detail ? `<code>${esc(detail)}</code>` : ''}`;
+}
+
+// 연결 성공/데모 진입 → 썸네일이 차례로 켜진 뒤 실습 목록으로 이동
+async function unlock() {
+  $('#rack').classList.add('lit');
+  await sleep(1700);
+  location.href = 'gallery.html';
+}
+
+// 서버(/api/key-test)가 Claude API를 1회 호출해 키를 확인한다. 키는 서버에 저장되지 않는다.
+$('#f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const k = key.value.trim();
+  if (!k) return fail('API 키를 입력해 주세요.', 'Anthropic 콘솔에서 발급한 sk-ant- 로 시작하는 키가 필요합니다.');
+  if (!k.startsWith('sk-ant-')) return fail('키 형식이 올바르지 않습니다.', 'Claude API 키는 sk-ant- 로 시작합니다. 복사할 때 앞뒤가 잘리지 않았는지 확인해 주세요.');
+  go.disabled = true; go.textContent = '연결 중'; st.className = 'status'; st.textContent = '';
+  try {
+    store.set('apiKey', k);
+    await App.api('/api/key-test', { method: 'POST' });
+    st.className = 'status ok'; st.textContent = '연결되었습니다.';
+    unlock();
+  } catch (err) {
+    store.clear();
+    fail(err.message, err.detail);
+  } finally { go.disabled = false; go.textContent = '연결 테스트'; }
+});
+
+</script>
+</body>
+</html>

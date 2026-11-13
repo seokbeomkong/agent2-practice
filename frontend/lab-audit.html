@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>보험금 지급 판단 Agent App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/common.css">
+<style>
+  .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:20px;padding:0 20px 32px;align-items:start}
+  .left,.right{display:grid;gap:20px;min-width:0}
+  .bottom{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px}
+
+  /* 사건 목록 */
+  .cases{list-style:none;margin:0;padding:8px;max-height:360px;overflow:auto;display:grid;gap:6px}
+  .cases li{display:flex;align-items:stretch;gap:4px}
+  .cases .open{flex:1;min-width:0;text-align:left;border:2px solid transparent;background:none;border-radius:8px;padding:8px 10px;cursor:pointer;display:grid;gap:3px}
+  .cases .open:hover{background:var(--paper)}
+  .cases .open[aria-current=true]{border-color:var(--ink);background:#fff;box-shadow:3px 3px 0 var(--ink)}
+  .cases .t{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cases .m{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+  .cases .del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:18px;padding:0 6px;border-radius:6px}
+  .cases .del:hover{color:var(--coral);background:var(--paper)}
+  .stt{font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;border:1.5px solid var(--ink);background:#fff;color:var(--ink)}
+  .stt.s0{background:#FFF1A8} .stt.s1{background:#C9F5E3} .stt.s2{background:#E4DDFF}
+
+  /* 전문가 요약 */
+  .team{list-style:none;margin:0;padding:10px 12px;display:grid;gap:8px}
+  .team li{display:flex;align-items:center;gap:10px;font-size:14px}
+  .dot2{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink);flex:none}
+  .team small{color:var(--muted);margin-left:auto;white-space:nowrap}
+
+  /* 스위치 */
+  .tg{display:inline-flex;align-items:center;gap:8px;border:2px solid var(--ink);border-radius:99px;padding:3px 12px 3px 5px;background:#fff;font-weight:700;font-size:13px;cursor:pointer}
+  .tg .sw{width:32px;height:18px;border-radius:99px;border:2px solid var(--ink);background:#D8D2EE;position:relative;transition:background .15s}
+  .tg .sw::after{content:"";position:absolute;top:1px;left:1px;width:12px;height:12px;border-radius:50%;background:#fff;border:1.5px solid var(--ink);transition:transform .15s}
+  .tg[aria-checked=true] .sw{background:var(--mint)}
+  .tg[aria-checked=true] .sw::after{transform:translateX(14px)}
+  .tg:disabled{opacity:.45;cursor:not-allowed}
+  .gh{display:flex;align-items:center;gap:10px}
+  .round{font:700 12px var(--mono);padding:3px 8px;border:2px solid var(--ink);border-radius:99px;background:#fff}
+  .mode{font-size:12px;color:var(--muted);font-weight:500}
+
+  /* 노드 팝업 (Orchestration 앱과 같은 방식) */
+  .stage-bg{position:relative}
+  .npop{position:absolute;z-index:5;width:min(390px,calc(100% - 24px));max-height:calc(100% - 24px);display:flex;flex-direction:column;
+        background:#fff;border:2px solid var(--ink);border-radius:12px;box-shadow:5px 5px 0 var(--ink);animation:npop .15s ease-out}
+  @keyframes npop{from{transform:scale(.96);opacity:0}}
+  .npop[hidden]{display:none}
+  .npop .ph{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:2px solid var(--ink);background:var(--gold);border-radius:10px 10px 0 0}
+  .npop .ph b{font:400 1.15rem var(--display)}
+  .npop .ph small{opacity:.75}
+  .npop .st{margin-left:auto;font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;border:1.5px solid var(--ink);background:#fff}
+  .npop .st.work{background:var(--mint);color:#fff}
+  .npop .x{border:0;background:none;font-size:20px;line-height:1;cursor:pointer;padding:2px 4px}
+  .npop .pt{padding:10px 12px;border-bottom:1px solid #D8D2EE;display:flex;align-items:center;gap:10px;font-size:13px;flex-wrap:wrap}
+  .npop .pt small{color:var(--muted)}
+  .npop .pb{overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0}
+  .npop .ent{flex:none}
+  .npop .ent{border:2px solid var(--ink);border-radius:8px;overflow:hidden}
+  .npop .ent .eh{display:flex;justify-content:space-between;gap:8px;padding:5px 10px;font-size:12px;font-weight:700;border-bottom:1.5px solid var(--ink);background:#E8F4FF}
+  .npop .ent.out .eh{background:#C9F5E3} .npop .ent.note .eh{background:#FFF1A8}
+  .npop .ent .eh span{font-weight:500;color:var(--muted);font-family:var(--mono)}
+  .npop .ent p{padding:8px 10px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.65;margin:0}
+  .npop .none{color:var(--muted);font-size:14px}
+
+  /* 사건 대화 */
+  .thread{height:430px;overflow:auto;padding:14px;display:grid;gap:12px;align-content:start}
+  .q{justify-self:end;max-width:85%;background:var(--ink);color:#fff;border-radius:14px 14px 4px 14px;padding:10px 14px;white-space:pre-wrap}
+  .a{border:2px solid var(--ink);border-radius:10px;background:#fff;padding:12px 14px;box-shadow:3px 3px 0 var(--ink)}
+  .a .first{font:400 1.15rem/1.4 var(--display);margin-bottom:6px}
+  .a .body{white-space:pre-wrap;line-height:1.7;font-size:14px}
+  .a .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+  .a .meta span{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;border:2px solid var(--ink);background:var(--mint);color:#fff}
+  .a .meta span.no{background:var(--coral)} .a .meta span.mode{background:#fff;color:var(--muted);border-color:#D8D2EE}
+  .a.wait{display:flex;gap:10px;align-items:center;color:var(--muted)}
+  .a.err{border-left:8px solid var(--coral)} .a.err code{display:block;font:12px var(--mono);color:var(--muted)}
+  .spin{width:16px;height:16px;border:2.5px solid var(--ink);border-right-color:transparent;border-radius:50%;animation:sp 1s linear infinite;flex:none}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .thh{display:flex;align-items:center;gap:8px;min-width:0}
+  .thh span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .thh select{border:2px solid var(--ink);border-radius:6px;padding:3px 6px;font:inherit;font-size:13px;font-weight:700;background:#fff}
+  .ask{display:grid;gap:8px;padding:12px;border-top:2px solid var(--ink)}
+  .ask textarea{width:100%;border:2px solid var(--ink);border-radius:6px;padding:10px 12px;resize:vertical;min-height:70px;background:#fff}
+  .ask textarea:focus{border-color:var(--cobalt);outline:none}
+  .ask .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .ask .row .btn{margin-left:auto}
+  .logbox{height:520px;overflow:auto}
+  .log .row{border-left-width:4px}
+
+  /* Agent 관리 창 */
+  dialog{border:2px solid var(--ink);border-radius:14px;padding:0;width:min(900px,94vw);max-height:90vh;box-shadow:6px 6px 0 var(--ink)}
+  dialog::backdrop{background:rgba(20,16,31,.5)}
+  .mg{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:520px}
+  .mg-l{border-right:2px solid var(--ink);padding:14px;display:grid;gap:8px;align-content:start;background:var(--paper)}
+  .mg-l button.ag{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:2px solid var(--ink);border-radius:8px;background:#fff;padding:8px 10px;cursor:pointer;font-weight:700}
+  .mg-l button.ag[aria-current=true]{background:var(--ink);color:#fff}
+  .mg-r{padding:18px;display:grid;gap:12px;align-content:start;overflow:auto;max-height:calc(90vh - 60px)}
+  .mg-r label{display:grid;gap:6px;font-weight:700;font-size:14px}
+  .mg-r input,.mg-r textarea{border:2px solid var(--ink);border-radius:6px;padding:9px 11px;font:inherit;resize:vertical}
+  .mg-r .help{font-size:13px;color:var(--muted);font-weight:400}
+  .mg-r .acts{display:flex;gap:8px;flex-wrap:wrap}
+  .mg-r .acts .danger{margin-left:auto;background:#fff;color:var(--coral);box-shadow:inset 0 0 0 2px var(--coral)}
+  .docs{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+  .docs li{display:flex;align-items:center;gap:10px;border:2px solid var(--ink);border-radius:8px;padding:7px 10px;background:#fff;font-size:14px}
+  .docs li a{font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .docs li small{color:var(--muted);margin-left:auto;white-space:nowrap}
+  .docs li button{border:0;background:none;color:var(--coral);cursor:pointer;font-weight:700}
+  .up{border:2px dashed var(--ink);border-radius:8px;padding:12px;text-align:center;font-size:13px;color:var(--muted);background:var(--paper)}
+  .up.over{background:var(--gold);color:var(--ink)}
+  .mg-head{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:2px solid var(--ink);background:var(--gold);border-radius:12px 12px 0 0}
+  .mg-head h2{font-size:1.3rem}
+  .msgline{font-size:13px;min-height:18px}
+  .msgline.err{color:var(--coral);font-weight:700} .msgline.ok{color:var(--mint);font-weight:700}
+  @media(max-width:1180px){.bottom{grid-template-columns:minmax(0,1fr)}}
+  @media(max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}.mg{grid-template-columns:1fr}.mg-l{border-right:0;border-bottom:2px solid var(--ink)}}
+</style>
+</head>
+<body>
+<script src="assets/common.js"></script>
+<script src="assets/graph.js"></script>
+<script>
+const lab = App.LABS.find(l => l.id === 'audit');
+App.mountBar(lab.title, lab.ch);
+App.mountHead(lab, '보험사 심사팀을 Agent로 옮긴 앱입니다. Orchestrator는 모든 전문가와 <b>Tool</b>로 연결되어 있고, 전문가끼리는 서로 모두 <b>A2A</b>로 연결된 <b>Full-Mesh</b> 구조입니다. Orchestrator가 전문가를 부르면, 그 전문가가 먼저 의견을 내고 다른 모든 전문가에게 A2A로 피드백을 받아 최대 2번 조율해요(모두 동의하면 종료). Full-Mesh를 끄면 전문가끼리 소통하지 않는 <b>Supervisor</b> 구조가 되어 Orchestrator가 직접 의견을 모읍니다.<br><br><b>사건별 대화</b>: 대화 하나가 사건 하나예요. 같은 사건에서 이어서 질문하면 Agent들이 그 사건에서 했던 말을 기억합니다. 결론의 처리 상태(진행 중/완료/보류)도 정할 수 있어요.<br><b>Agent 관리</b>: 전문가를 추가·수정·삭제하고, 전문가마다 약관 같은 <b>참조 문서</b>(PDF, txt, md)를 올리면 그 전문가가 문서를 읽고 근거로 답합니다. 노드를 누르면 그 Agent가 받은 요청과 결과 전체를 볼 수 있어요.', true);
+</script>
+
+<main class="layout">
+  <div class="left">
+    <section class="panel" aria-label="사건 목록">
+      <div class="panel-h">사건 목록 <button class="btn ghost sm" id="newCase">새 사건</button></div>
+      <ul class="cases" id="cases"></ul>
+    </section>
+    <section class="panel" aria-label="전문가">
+      <div class="panel-h">전문가 Agent <button class="btn ghost sm" id="manage">Agent 관리</button></div>
+      <ul class="team" id="team"></ul>
+    </section>
+  </div>
+
+  <div class="right">
+    <section class="panel" aria-label="보험심사팀 그래프">
+      <div class="panel-h"><div class="gh">보험심사팀 <span class="round" id="round" hidden></span></div>
+        <div class="gh"><span class="mode" id="modeTxt"></span><button type="button" class="tg" role="switch" id="mesh" aria-checked="true"><span class="sw"></span>Full-Mesh</button></div></div>
+      <div class="stage-bg" id="stage">
+        <svg id="g" role="img" aria-label="사람, Orchestrator, 전문가 Agent의 연결 그래프"></svg>
+        <div class="npop" id="pop" hidden role="dialog" aria-labelledby="popTitle"></div>
+      </div>
+    </section>
+    <div class="bottom">
+      <section class="panel" aria-label="사건 대화">
+        <div class="panel-h"><div class="thh"><span id="caseTitle">사건</span></div>
+          <div class="thh"><label for="status" style="font-size:13px;color:var(--muted);font-weight:500">처리 상태</label><select id="status"><option>진행 중</option><option>완료</option><option>보류</option></select></div></div>
+        <div class="thread" id="thread" aria-live="polite"></div>
+        <form class="ask" id="cf">
+          <textarea id="ci" aria-label="사건 내용" placeholder="판단할 사건이나 이어서 물어볼 내용을 적어 주세요."></textarea>
+          <div class="row" id="presets"></div>
+        </form>
+      </section>
+      <section class="panel" aria-label="협의 로그">
+        <div class="panel-h">협의 로그</div>
+        <div class="logbox"><div class="log" id="log"><p class="log-empty" id="lg0">심사를 시작하면 Agent들이 주고받은 내용이 여기에 쌓여요.</p></div></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<dialog id="dlg" aria-labelledby="mgTitle">
+  <div class="mg-head"><h2 id="mgTitle">Agent 관리</h2><button class="btn ghost sm" id="dlgClose" type="button">닫기</button></div>
+  <div class="mg">
+    <div class="mg-l"><div id="agList" style="display:grid;gap:8px"></div><button class="btn blue sm" id="agAdd" type="button" style="justify-content:center">전문가 추가</button></div>
+    <div class="mg-r" id="agForm"></div>
+  </div>
+</dialog>
+
+<script>
+const { $, esc, api, readSSE, nowTime } = App;
+const STATUSES = ['진행 중', '완료', '보류'];
+let G, GRAPH, NODES = {}, COLORS = {}, KIND = {}, running = false, openId = null;
+let caseId = null, AGENTS = [], editId = null;
+const DETAILS = {}, WORKING = new Set();
+
+// ── 그래프: 사람 → Orchestrator, 첫 전문가는 가운데, 나머지는 오른쪽 열 (전문가 3명이면 스크린샷 모양)
+function meshLayout(nodes, links, W, H) {
+  const pos = {}, cy = H / 2, ex = nodes.filter(n => n.kind === 'expert');
+  pos.human = { x: 70, y: cy }; pos.orch = { x: 245, y: cy };
+  if (ex.length === 1) pos[ex[0].id] = { x: 520, y: cy };
+  else if (ex.length === 2) { pos[ex[0].id] = { x: 560, y: cy - 110 }; pos[ex[1].id] = { x: 560, y: cy + 110 }; }
+  else {
+    // 가운데 전문가는 조금 왼쪽, 나머지는 오른쪽 열에 위아래로 넓게 펴서 Orchestrator에서 가는 선이 가운데 노드를 스치지 않게 한다
+    pos[ex[0].id] = { x: 455, y: cy };
+    const rest = ex.slice(1), gap = Math.min(330, (H - 100) / Math.max(rest.length - 1, 1));
+    rest.forEach((n, i) => pos[n.id] = { x: 700, y: cy + (i - (rest.length - 1) / 2) * gap });
+  }
+  return pos;
+}
+async function loadGraph() {
+  GRAPH = await (await api('/api/audit/graph')).json();
+  NODES = {}; KIND = {};
+  G = AgentGraph.create($('#g'), GRAPH, { width: 780, height: 460, layout: meshLayout, onNodeClick: togglePopup });
+  GRAPH.nodes.forEach(n => { NODES[n.id] = n; COLORS[n.id] = n.color; DETAILS[n.id] = DETAILS[n.id] || []; G.setBadge(n.id, DETAILS[n.id].length); });
+  GRAPH.links.forEach(l => { KIND[l.from + '>' + l.to] = KIND[l.to + '>' + l.from] = l.kind; });
+  setMesh(GRAPH.mesh, false);
+  $('#team').innerHTML = GRAPH.nodes.filter(n => n.kind === 'expert').map(n => `<li><i class="dot2" style="background:${n.color}"></i><b>${esc(n.name)}</b><span style="color:var(--muted);font-size:13px">${esc(n.role)}</span><small>문서 ${n.docs}</small></li>`).join('');
+  if (openId && NODES[openId]) { G.setSelected(openId); renderPopup(); placePopup(); } else closePopup();
+}
+
+// ── Full-Mesh 켜기/끄기
+function setMesh(on, save = true) {
+  $('#mesh').setAttribute('aria-checked', on);
+  G.setKindOff('a2a', !on);
+  $('#modeTxt').textContent = on ? '전문가끼리 A2A로 조율' : 'Supervisor: Orchestrator가 조율';
+  if (save) api('/api/audit/settings', { json: { mesh: on }, method: 'PUT' });
+  if (openId) renderPopup();
+}
+$('#mesh').onclick = () => { if (!running) setMesh($('#mesh').getAttribute('aria-checked') !== 'true'); };
+
+// ── 노드 팝업: 같은 노드를 다시 누르면 닫힌다
+function togglePopup(id) { if (openId === id) return closePopup(); openId = id; G.setSelected(id); renderPopup(); placePopup(); }
+function closePopup() { const was = openId; openId = null; G?.setSelected(null); $('#pop').hidden = true; if (was) document.querySelector('#n-' + was)?.focus(); }
+const KIND_KO = { in: '받음', out: '결과', note: '판단' };
+function renderPopup() {
+  const n = NODES[openId], pop = $('#pop'); if (!n) return closePopup();
+  const list = DETAILS[openId] || [], work = WORKING.has(openId), keep = pop.querySelector('.pb')?.scrollTop;
+  const extra = n.kind === 'expert'
+    ? `<div class="pt"><span>참조 문서 ${n.docs}개</span><button type="button" class="btn ghost sm" data-edit="${n.id}">Agent 수정 · 문서 관리</button></div>`
+    : n.kind === 'hub' ? `<div class="pt"><small>${$('#mesh').getAttribute('aria-checked') === 'true' ? 'Full-Mesh: 부른 전문가가 다른 전문가들과 A2A로 조율해요.' : 'Supervisor: 전문가들의 의견을 Orchestrator가 직접 모아요.'}</small></div>` : '';
+  pop.innerHTML = `<div class="ph"><b id="popTitle">${esc(n.name)}</b><small>${esc(n.role || '')}</small>
+      <span class="st ${work ? 'work' : ''}">${work ? '작업 중' : '대기'}</span><button class="x" type="button" aria-label="닫기">×</button></div>${extra}
+    <div class="pb">${list.length ? list.map(d => `<div class="ent ${d.kind}"><div class="eh">${KIND_KO[d.kind] || ''} · ${esc(d.title)}<span>${esc(d.time || '')}</span></div><p>${esc(d.text)}</p></div>`).join('')
+      : '<p class="none">아직 기록이 없어요. 심사를 시작하면 이 Agent가 받은 요청과 결과가 여기에 쌓여요.</p>'}</div>`;
+  pop.hidden = false;
+  if (keep != null) pop.querySelector('.pb').scrollTop = keep;
+  pop.querySelector('.x').onclick = closePopup;
+  pop.querySelector('[data-edit]')?.addEventListener('click', e => openManage(e.currentTarget.dataset.edit));
+}
+function placePopup() {
+  const stage = $('#stage').getBoundingClientRect(), p = G.screenPos(openId), pop = $('#pop'); if (!p) return;
+  const w = pop.offsetWidth, h = pop.offsetHeight, pad = 12, nx = p.x - stage.left, ny = p.y - stage.top;
+  let x = nx + p.r + 16 + w <= stage.width - pad ? nx + p.r + 16 : nx - p.r - 16 - w;
+  x = Math.max(pad, Math.min(stage.width - w - pad, x));
+  pop.style.left = x + 'px'; pop.style.top = Math.max(pad, Math.min(stage.height - h - pad, ny - 60)) + 'px';
+}
+addEventListener('resize', () => openId && placePopup());
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && openId && !$('#dlg').open) closePopup(); });
+function addDetail(agent, title, text, kind, time) {
+  if (!DETAILS[agent]) DETAILS[agent] = [];
+  DETAILS[agent].push({ title, text, kind, time: time || nowTime() });
+  G.setBadge(agent, DETAILS[agent].length);
+  if (openId === agent) renderPopup();
+}
+function resetDetails() { Object.keys(DETAILS).forEach(id => { DETAILS[id] = []; G.setBadge(id, 0); }); if (openId) renderPopup(); }
+
+// ── 사건 목록
+async function loadCases(selectId) {
+  let list = await (await api('/api/audit/cases')).json();
+  if (!list.length) { await api('/api/audit/cases', { method: 'POST' }); list = await (await api('/api/audit/cases')).json(); }
+  const id = selectId || caseId || list[0].id;
+  $('#cases').innerHTML = list.map(c => `<li><button class="open" data-c="${c.id}" aria-current="${c.id === id}" ${running ? 'disabled' : ''}>
+      <span class="t">${esc(c.title)}</span><span class="m"><span class="stt s${STATUSES.indexOf(c.status)}">${esc(c.status)}</span>${c.turns ? `질문 ${c.turns}개` : '아직 질문 없음'}</span></button>
+      <button class="del" data-del="${c.id}" aria-label="${esc(c.title)} 삭제" ${running ? 'disabled' : ''}>×</button></li>`).join('');
+  if (id !== caseId) await openCase(id);
+}
+async function openCase(id) {
+  caseId = id;
+  document.querySelectorAll('#cases .open').forEach(b => b.setAttribute('aria-current', b.dataset.c === id));
+  const c = await (await api(`/api/audit/cases/${id}`)).json();
+  $('#caseTitle').textContent = c.title; $('#status').value = c.status;
+  $('#thread').innerHTML = c.turns.length ? '' : '<p class="none" style="color:var(--muted)">새 사건이에요. 아래에 사건 내용을 적고 심사를 시작해 보세요.</p>';
+  c.turns.forEach(t => { addQuestion(t.question); addAnswer(t); });
+  // 마지막 심사의 Agent별 기록을 팝업에 복원
+  resetDetails(); $('#log').innerHTML = '<p class="log-empty" id="lg0">이 사건의 협의 로그는 새로 심사할 때 쌓여요. 지난 기록은 노드를 눌러 확인할 수 있어요.</p>';
+  const last = c.turns[c.turns.length - 1];
+  (last?.details || []).forEach(d => addDetail(d.agent, d.title, d.text, d.kind, d.time));
+  $('#thread').scrollTop = 1e9;
+}
+$('#cases').onclick = async e => {
+  if (running) return;
+  const o = e.target.closest('[data-c]'), d = e.target.closest('[data-del]');
+  if (o) return openCase(o.dataset.c);
+  if (d && confirm('이 사건과 대화 기록을 삭제할까요?')) {
+    await api(`/api/audit/cases/${d.dataset.del}`, { method: 'DELETE' });
+    if (d.dataset.del === caseId) caseId = null;
+    loadCases();
+  }
+};
+$('#newCase').onclick = async () => { if (running) return; const c = await (await api('/api/audit/cases', { method: 'POST' })).json(); await loadCases(c.id); $('#ci').focus({ preventScroll: true }); };
+$('#status').onchange = async () => { await api(`/api/audit/cases/${caseId}`, { json: { status: $('#status').value }, method: 'PATCH' }); loadCases(caseId); };
+
+// ── 사건 대화
+function addQuestion(q) { $('#thread').querySelector('.none')?.remove(); $('#thread').insertAdjacentHTML('beforeend', `<div class="q">${esc(q)}</div>`); }
+function addAnswer(t) {
+  const [first, ...rest] = (t.conclusion || '').split('\n');
+  const votes = Object.entries(t.agreements || {}).map(([k, ok]) => `<span class="${ok ? '' : 'no'}">${esc((t.names || {})[k] || NODES[k]?.name || k)} ${ok ? '동의' : '이견'}</span>`).join('');
+  $('#thread').insertAdjacentHTML('beforeend', `<div class="a"><p class="first">${esc(first)}</p><div class="body">${esc(rest.join('\n').trim())}</div>
+    <div class="meta">${votes}<span class="mode">${t.mesh === false ? 'Supervisor' : 'Full-Mesh'}</span></div></div>`);
+}
+const CASES = [
+  '폭우로 인해 빌라 지하 주차장에 있는 차량 20대가 모두 침수되었는데, 법적으로 전액 보상 가능?',
+  '러닝 동호회를 위한 보험 상품을 개발하여, 사업성을 더 높일 수 있을까?',
+  '고객이 이민 간다고 환불해 달라고 하는데, 어떤 멘트로 거절을 해야 할까?'
+];
+$('#presets').innerHTML = CASES.map((c, i) => `<button type="button" class="chip" data-i="${i}">${esc(c.slice(0, 18))}…</button>`).join('') + '<button class="btn blue" id="run">심사 시작</button>';
+$('#presets').onclick = e => { const b = e.target.closest('[data-i]'); if (b) $('#ci').value = CASES[b.dataset.i]; };
+
+function log(who, to, text, kind) {
+  $('#lg0')?.remove();
+  const row = document.createElement('div'); row.className = 'row';
+  row.style.borderColor = COLORS[who] === '#FFD400' ? '#C9A400' : (COLORS[who] || '#D8D2EE');
+  row.innerHTML = `<span class="who">${esc(NODES[who]?.name || who)}${to ? ` <span style="font-weight:400;color:var(--muted)">에서</span> ${esc(NODES[to]?.name || to)}` : ''}${kind ? `<span class="badge ${kind}">${{ request: '요청', tool: 'Tool', a2a: 'A2A' }[kind] || kind}</span>` : ''}</span>
+    <span class="t">${nowTime()}</span><span class="what">${esc(text)}</span>`;
+  $('#log').append(row); $('#log').parentElement.scrollTop = 1e9;
+}
+
+const play = AgentGraph.player(async ev => {
+  if (ev.type === 'status') { ev.state === 'working' ? WORKING.add(ev.agent) : WORKING.delete(ev.agent); G.setOn(ev.agent, ev.state === 'working'); if (openId === ev.agent) renderPopup(); return; }
+  if (ev.type === 'detail') return addDetail(ev.agent, ev.title, ev.text, ev.kind);
+  if (ev.type === 'round') { $('#round').hidden = false; $('#round').textContent = `${NODES[ev.lead]?.name || ''} 주도 조율 ${ev.n}/${ev.max}`; return; }
+  if (ev.type === 'call' || ev.type === 'message') {
+    log(ev.from, ev.to, ev.text + (ev.agree === true ? ' (동의)' : ev.agree === false ? ' (수정 요청)' : ''), KIND[ev.from + '>' + ev.to]);
+    await G.travel(ev.from, ev.to, ev.type === 'message' ? 550 : 650);
+    return;
+  }
+  if (ev.type === 'log') return log(ev.agent, null, ev.text);
+  if (ev.type === 'a2a_stage') return;
+  if (ev.type === 'result') {
+    $('#thread .a.wait')?.remove();
+    addAnswer({ conclusion: ev.text, agreements: ev.agreements, names: ev.names, mesh: $('#mesh').getAttribute('aria-checked') === 'true' });
+    $('#thread').scrollTop = 1e9; return;
+  }
+  if (ev.type === 'error') {
+    $('#thread .a.wait')?.remove();
+    $('#thread').insertAdjacentHTML('beforeend', `<div class="a err"><b>${esc(ev.message)}</b><code>${esc(ev.detail || '')}</code></div>`); return;
+  }
+  if (ev.type === 'done') {
+    G.clear(); WORKING.clear(); running = false; $('#round').hidden = true;
+    $('#run').disabled = false; $('#run').textContent = '심사 시작'; $('#mesh').disabled = false;
+    await loadCases(caseId); $('#caseTitle').textContent = document.querySelector('#cases [aria-current=true] .t')?.textContent || '사건';
+  }
+});
+
+$('#cf').onsubmit = e => e.preventDefault();
+$('#presets').addEventListener('click', async e => {
+  if (e.target.id !== 'run') return;
+  const text = $('#ci').value.trim(); if (!text || running || !G || !caseId) return;
+  running = true; $('#run').disabled = true; $('#run').textContent = '심사 중'; $('#mesh').disabled = true;
+  document.querySelectorAll('#cases button').forEach(b => b.disabled = true);
+  $('#log').innerHTML = ''; G.clear(); resetDetails();
+  addQuestion(text); $('#ci').value = '';
+  $('#thread').insertAdjacentHTML('beforeend', '<div class="a wait"><i class="spin"></i>전문가들이 의견을 조율하고 있어요. 몇 분 걸릴 수 있어요.</div>');
+  $('#thread').scrollTop = 1e9;
+  try {
+    const res = await api('/api/audit/run', { json: { case_id: caseId, case: text } });
+    await readSSE(res, ev => play.push(ev));
+  } catch (err) { play.push({ type: 'error', message: err.message, detail: err.detail }); play.push({ type: 'done' }); }
+});
+
+// ── Agent 관리 (추가 / 수정 / 삭제 / 참조 문서)
+async function openManage(id) {
+  if (running) return alert('심사 중에는 Agent를 바꿀 수 없어요.');
+  AGENTS = await (await api('/api/audit/agents')).json();
+  editId = id || AGENTS[0]?.id || null;
+  drawManage(); if (!$('#dlg').open) $('#dlg').showModal();
+}
+function drawManage(msg = '', cls = '') {
+  $('#agList').innerHTML = AGENTS.map(a => `<button type="button" class="ag" data-a="${a.id}" aria-current="${a.id === editId}"><i class="dot2" style="background:${a.color}"></i>${esc(a.name)}</button>`).join('')
+    + (editId === 'new' ? '<button type="button" class="ag" aria-current="true">새 전문가</button>' : '');
+  const a = AGENTS.find(x => x.id === editId) || { name: '', role: '', prompt: '', docs: [] };
+  const isNew = editId === 'new';
+  $('#agForm').innerHTML = `
+    <label>이름<input id="fName" maxlength="12" value="${esc(a.name)}" placeholder="예: 의료"></label>
+    <label>역할 (그래프에 보이는 한 줄)<input id="fRole" maxlength="30" value="${esc(a.role)}" placeholder="예: 진단서·치료 적정성 검토"></label>
+    <label>역할 지시문 (시스템 프롬프트)<span class="help">이 전문가가 어떤 입장에서 무엇을 중요하게 보는지 적어 주세요.</span>
+      <textarea id="fPrompt" rows="7" placeholder="예: 당신은 보험사 보험심사팀의 의료 전문가입니다. 진단서와 치료 내역이 보장 범위에 맞는지 검토합니다.">${esc(a.prompt)}</textarea></label>
+    <div class="acts"><button type="button" class="btn blue" id="fSave">${isNew ? '추가' : '저장'}</button>${isNew ? '' : '<button type="button" class="btn danger" id="fDel">삭제</button>'}</div>
+    <p class="msgline ${cls}" id="fMsg">${esc(msg)}</p>
+    <div style="border-top:2px solid var(--ink);padding-top:14px;display:grid;gap:10px">
+      <b>참조 문서</b><span class="help" style="font-size:13px;color:var(--muted)">약관, 내부 규정, 판례 요약 같은 문서를 올리면 이 전문가가 읽고 근거로 답해요. PDF, txt, md (15MB 이하)</span>
+      ${isNew ? '<p class="help" style="font-size:13px;color:var(--muted)">전문가를 먼저 추가하면 문서를 올릴 수 있어요.</p>' : `
+      <ul class="docs">${(a.docs || []).map(d => `<li><a href="/api/audit/agents/${a.id}/docs/${encodeURIComponent(d.name)}" target="_blank" rel="noopener">${esc(d.name)}</a><small>${(d.size / 1024).toFixed(0)}KB, ${d.chars.toLocaleString()}자</small><button type="button" data-doc="${esc(d.name)}">삭제</button></li>`).join('') || '<li style="border-style:dashed;color:var(--muted)">아직 올린 문서가 없어요.</li>'}</ul>
+      <label class="up" id="up">여기로 끌어다 놓거나 눌러서 파일 선택<input type="file" id="fFile" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple class="sr"></label>`}
+    </div>`;
+  $('#fSave').onclick = saveAgent;
+  $('#fDel')?.addEventListener('click', deleteAgent);
+  $('#agForm').querySelectorAll('[data-doc]').forEach(b => b.onclick = () => deleteDoc(b.dataset.doc));
+  const up = $('#up');
+  if (up) {
+    $('#fFile').onchange = e => uploadDocs(e.target.files);
+    ['dragenter', 'dragover'].forEach(t => up.addEventListener(t, e => { e.preventDefault(); up.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach(t => up.addEventListener(t, e => { e.preventDefault(); up.classList.remove('over'); }));
+    up.addEventListener('drop', e => uploadDocs(e.dataTransfer.files));
+  }
+}
+async function refreshManage(id, msg, cls) { AGENTS = await (await api('/api/audit/agents')).json(); editId = id; drawManage(msg, cls); await loadGraph(); }
+async function saveAgent() {
+  const body = { name: $('#fName').value.trim(), role: $('#fRole').value.trim(), prompt: $('#fPrompt').value.trim() };
+  try {
+    const a = await (await api(editId === 'new' ? '/api/audit/agents' : `/api/audit/agents/${editId}`, { json: body, method: editId === 'new' ? 'POST' : 'PUT' })).json();
+    await refreshManage(a.id, editId === 'new' ? '전문가를 추가했어요. 그래프에 바로 연결됩니다.' : '저장했어요.', 'ok');
+  } catch (e) { $('#fMsg').className = 'msgline err'; $('#fMsg').textContent = e.message; }
+}
+async function deleteAgent() {
+  const a = AGENTS.find(x => x.id === editId);
+  if (!confirm(`'${a.name}' 전문가와 참조 문서를 삭제할까요?`)) return;
+  try { await api(`/api/audit/agents/${editId}`, { method: 'DELETE' }); if (openId === editId) closePopup(); await refreshManage(null, '삭제했어요.', 'ok'); editId = AGENTS[0]?.id; drawManage('삭제했어요.', 'ok'); }
+  catch (e) { $('#fMsg').className = 'msgline err'; $('#fMsg').textContent = e.message; }
+}
+async function uploadDocs(files) {
+  let ok = 0, errs = [];
+  for (const f of files) {
+    const fd = new FormData(); fd.append('file', f);
+    try { await api(`/api/audit/agents/${editId}/docs`, { form: fd }); ok++; } catch (e) { errs.push(`${f.name}: ${e.message}`); }
+  }
+  await refreshManage(editId, errs.length ? errs.join(' / ') : `문서 ${ok}개를 올렸어요.`, errs.length ? 'err' : 'ok');
+}
+async function deleteDoc(name) {
+  if (!confirm(`'${name}' 문서를 삭제할까요?`)) return;
+  await api(`/api/audit/agents/${editId}/docs/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  await refreshManage(editId, '문서를 삭제했어요.', 'ok');
+}
+$('#agList').onclick = e => { const b = e.target.closest('[data-a]'); if (b) { editId = b.dataset.a; drawManage(); } };
+$('#agAdd').onclick = () => { editId = 'new'; drawManage(); $('#fName').focus(); };
+$('#manage').onclick = () => openManage();
+$('#dlgClose').onclick = () => $('#dlg').close();
+
+(async () => {
+  try { await loadGraph(); await loadCases(); }
+  catch (e) { $('#thread').innerHTML = `<div class="a err"><b>${esc(e.message)}</b><code>${esc(e.detail || '')}</code></div>`; }
+})();
+</script>
+</body>
+</html>
