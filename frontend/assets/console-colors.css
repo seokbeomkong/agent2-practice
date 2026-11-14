@@ -9,14 +9,36 @@
   --k1:#345778; --k2:#91aac5; --k3:#101923; --k4:#dce5ef; --k5:#365461;
   --k6:#8297ac; --k7:#485b70; --k8:#94abc4; --k9:#8a9aad; --k10:#53677e;
 }
-/* 실습 그래프의 색상 의미와 기존 시각 표현은 별도 범위에서 그대로 유지한다. */
-.agraph,.graph,.glegend {
-  color-scheme:light; color:#14101F;
-  --paper:#E4DDFF; --white:#fff; --ink:#14101F; --muted:#4A4560; --line:#14101F;
-  --cobalt:#E0218A; --cobalt-d:#B8176F; --gold:#FFD400; --mint:#00A86B; --coral:#E8301F;
-  --k1:#E0218A; --k2:#FFD400; --k3:#14101F; --k4:#fff; --k5:#00A86B;
-  --k6:#FF5A2E; --k7:#F8CFE6; --k8:#FFB3DA; --k9:#A79FC7; --k10:#7A6FA8;
-}
+/* 실습 그래프 (B안: 다크 3색). 색은 Subagent(주황)·MCP(청록)·A2A(파랑) 세 종류에만 쓰고, Tool·요청·노드는 무채색.
+   세 색은 색약 검증(dataviz validate_palette, 어두운 바탕 #131920)을 통과했다. 선 모양·라벨로도 함께 구분한다. */
+.agraph,.glegend{--ink:#e5eaf0;--muted:#a2afbe;color:#c3cbd6}
+:root .stage-bg{background:#131920}
+:root :is(.agraph,.glegend) .edge{stroke:#a2afbe;stroke-width:2.5}
+:root :is(.agraph,.glegend) .edge.request{stroke:#53677e;stroke-width:2}
+:root :is(.agraph,.glegend) .edge.subagent{stroke:#c98500;stroke-width:3.5}
+:root :is(.agraph,.glegend) .edge.mcp{stroke:#199e70;stroke-width:3.5}
+:root :is(.agraph,.glegend) .edge.a2a{stroke:#3987e5;stroke-width:4}
+:root .agraph .edge.on{stroke:#e5eaf0;stroke-width:5}
+:root .agraph .pill[class] rect{fill:#1f2731;stroke:#53677e}
+:root .agraph .pill[class] text{fill:#c3cbd6}
+:root .agraph .pill.subagent[class] rect{fill:#c98500;stroke:#c98500}
+:root .agraph .pill.mcp[class] rect{fill:#199e70;stroke:#199e70}
+:root .agraph .pill.a2a[class] rect{fill:#3987e5;stroke:#3987e5}
+:root .agraph :is(.pill.subagent,.pill.mcp,.pill.a2a)[class] text{fill:#0d1218}
+:root .agraph .node .shadow{fill:#080c11}
+:root .agraph .node .body{fill:#1f2731;stroke:#7d8fa3}
+:root .agraph .node .band{stroke:#3a4757}
+:root .agraph .node.hub .band{stroke:#8cb7ee}
+:root .agraph .node .name{fill:#e5eaf0}
+:root .agraph .node.clickable:hover .body{fill:#222c38}
+:root .agraph .node.on .body{fill:#25354a}
+:root .agraph .node.on .band,:root .agraph .node .ring{stroke:#e5eaf0}
+:root .agraph .node.sel .body,:root .agraph .node.clickable:focus-visible .body{stroke:#8cb7ee}
+:root .agraph .nbadge circle{fill:#8cb7ee;stroke:#0d1218}
+:root .agraph .nbadge text{fill:#0d1218}
+:root .agraph :is(.packet,.trail){fill:#e5eaf0}
+:root .agraph .packet{stroke:#0d1218}
+:root .glegend .tip{color:#a2afbe}
 
 /* 기존 스타일의 색상 속성만 덮어쓴다. */
 :root .btn{background:var(--strong);border-color:var(--line);box-shadow:3px 3px 0 var(--shadow)}

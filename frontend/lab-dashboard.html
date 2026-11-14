@@ -145,7 +145,8 @@ let reports = [];        // 분석 성공한 리포트 데이터
 let summary = null, summaryErr = null, phase = 'idle'; // idle | analyzing | summarizing | done
 let tab = 'sum', detMode = 'cards';
 const history = [];      // 챗봇 대화 기록
-const PALETTE = ['#E0218A', '#FFD400', '#00A86B', '#7A6FA8', '#FF5A2E', '#2B9BFF'];
+// 제품군 색 (B안: 앞의 3색은 그래프와 같은 색약 검증 통과 팔레트, 그 뒤는 제품군이 더 많을 때만 쓰며 범례로 함께 구분)
+const PALETTE = ['#3987e5', '#c98500', '#199e70', '#9085e9', '#d55181', '#8a9aad'];
 const LVC = ['', '#B9F2D7', '#B9F2D7', '#FFE680', '#FF9C8A', '#E8301F'];
 
 // ── 리포트 목록
