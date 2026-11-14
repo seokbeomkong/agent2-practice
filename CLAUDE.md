@@ -48,7 +48,7 @@ CH1(환경 설정), CH2(Agent View 병렬 개발)는 도구 사용법 중심이�
   - Vercel 한도에 맞춘 규칙: 함수 최대 300초(`vercel.json`), 요청 본문 4.5MB → 업로드 4MB 이하, 쓰기 가능한 곳은 임시 폴더뿐(Deep Agents 파일 공간은 실행 중에만 임시 폴더에 펼치고 끝나면 저장소로 되돌림), SSE는 15초마다 ping.
   - 사용 한도(공개 서버 보호): 캐릭터 12, 전문가 8, 전문가당 문서 5개·문서당 글자 60만자, 사건 30, 설치 Skill 1.5MB.
   - 환경변수: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (마켓플레이스 연동 시 `KV_REST_API_URL/TOKEN` 이름도 인식). Vercel에서 저장소가 없으면 파일에 몰래 저장하지 않고 안내 오류를 낸다. 확인: `/api/health`
-- 디자인은 **팝 스티커**(라벤더 배경, 굵은 검정 테두리, 평평한 그림자, Black Han Sans + Noto Sans KR)로 확정했다. 색과 모양은 `frontend/assets/common.css` 상단의 토큰으로 관리한다.
+- 기존 실습 내용·기능·배치·글꼴·노드/엣지 그래프를 유지하고 **개발 콘솔형 색상만** 적용한다. 기본 스타일은 `frontend/assets/common.css`, 색상 전용 덮어쓰기는 `frontend/assets/console-colors.css`에서 관리한다. 그래프의 기존 색상 구분은 보존한다. 제목은 "하루만에 익히는 Agent 개발 Demo"다.
 - 흐름: 접속 → API 키 입력·연결 테스트(`/api/key-test`) → 통과해야만 실습 목록 → 실습 화면. 키는 브라우저 `sessionStorage`에만 두고 요청마다 `X-Claude-Key` 헤더로 보낸다. 서버는 저장·로그하지 않는다.
 - 실습 4개 모두 실제 Claude로 동작한다 (모델 `claude-sonnet-5-5`, effort `medium`)
   - CH3 불량 리포트 분석: HTTP 직접 호출(교안 지침: Anthropic SDK 미사용), PDF → 구조화 추출 → 요약 → Dashboard → 스트리밍 챗봇

@@ -25,6 +25,7 @@
   .tile:hover .open{color:var(--cobalt)}
   @media(max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}}
 </style>
+<link rel="stylesheet" href="assets/console-colors.css">
 </head>
 <body>
 <header class="bar" id="bar"></header>
@@ -37,7 +38,7 @@
 <script>
 const { LABS, thumbs, esc, $ , store } = App;
 if (!App.hasAccess()) location.replace('index.html');
-$('#bar').innerHTML = `<span class="brand">에이전트 실습실</span><div class="sp"></div>
+$('#bar').innerHTML = `<span class="brand">하루만에 익히는 Agent 개발 Demo</span><div class="sp"></div>
   <div class="conn"><i class="dot"></i><span>${esc(App.maskKey())}</span></div>
   <button class="btn ghost sm" id="disconnect">연결 해제</button>`;
 $('#disconnect').onclick = () => { store.clear(); location.href = 'index.html'; };
