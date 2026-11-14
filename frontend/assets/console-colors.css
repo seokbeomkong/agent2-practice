@@ -1,0 +1,145 @@
+/* 색상 전용 테마. 레이아웃, 글꼴, 크기, 그래프와 동작은 원본을 유지한다. */
+:root {
+  color-scheme: dark;
+  --paper:#101419; --white:#171d24; --ink:#e5eaf0; --muted:#a2afbe; --line:#303b48;
+  --cobalt:#8cb7ee; --cobalt-d:#a5c8f4; --gold:#293e57; --mint:#267459; --coral:#bd454e;
+  --on-ink:#e5eaf0; --on-accent:#10233c;
+  --strong:#25354a; --shadow:#080c11;
+  --concl-bg:#293e57; --concl-fg:#e5eaf0; --concl-h:#e5eaf0;
+  --k1:#345778; --k2:#91aac5; --k3:#101923; --k4:#dce5ef; --k5:#365461;
+  --k6:#8297ac; --k7:#485b70; --k8:#94abc4; --k9:#8a9aad; --k10:#53677e;
+}
+/* 실습 그래프의 색상 의미와 기존 시각 표현은 별도 범위에서 그대로 유지한다. */
+.agraph,.graph,.glegend {
+  color-scheme:light; color:#14101F;
+  --paper:#E4DDFF; --white:#fff; --ink:#14101F; --muted:#4A4560; --line:#14101F;
+  --cobalt:#E0218A; --cobalt-d:#B8176F; --gold:#FFD400; --mint:#00A86B; --coral:#E8301F;
+  --k1:#E0218A; --k2:#FFD400; --k3:#14101F; --k4:#fff; --k5:#00A86B;
+  --k6:#FF5A2E; --k7:#F8CFE6; --k8:#FFB3DA; --k9:#A79FC7; --k10:#7A6FA8;
+}
+
+/* 기존 스타일의 색상 속성만 덮어쓴다. */
+:root .btn{background:var(--strong);border-color:var(--line);box-shadow:3px 3px 0 var(--shadow)}
+:root .btn.ghost{box-shadow:3px 3px 0 var(--shadow);background:var(--white)}
+:root .btn.ghost:hover{background:var(--strong)}
+:root .tag{background:var(--strong);border-color:var(--line)}
+:root .msg.user{background:var(--strong);color:var(--on-accent)}
+:root .bar{border-bottom-color:var(--line)}
+:root .panel{border-color:var(--line);box-shadow:5px 5px 0 var(--shadow)}
+:root .slot{border-color:var(--line);box-shadow:5px 5px 0 var(--shadow)}
+:root .tile{border-color:var(--line);box-shadow:5px 5px 0 var(--shadow)}
+:root .panel-h{border-bottom-color:var(--line)}
+:root .tile:hover{box-shadow:8px 8px 0 var(--shadow);border-color:var(--line)}
+:root .tile:focus-visible{box-shadow:8px 8px 0 var(--shadow);border-color:var(--line)}
+:root .thumb{border-bottom-color:var(--line)}
+:root .btn:active{box-shadow:1px 1px 0 var(--shadow)}
+:root .concepts span{background:var(--white);border-color:var(--line)}
+:root .explain{border-color:var(--line)}
+:root .msg{border-color:var(--line)}
+:root .msg.bot{background:var(--white)}
+:root .composer{border-top-color:var(--line)}
+:root .composer input{border-color:var(--line)}
+:root .composer textarea{border-color:var(--line)}
+:root .case textarea{border-color:var(--line)}
+:root .chip{border-color:var(--line)}
+:root .chip:hover{border-color:var(--line)}
+:root .keybox{border-color:var(--line);box-shadow:4px 4px 0 var(--shadow)}
+:root .slot p{border-top-color:var(--line)}
+:root .tabs{background:var(--white);border-bottom-color:var(--line)}
+:root .plist li button[aria-current=true]{background:var(--strong);color:var(--ink)}
+:root .alert{border-color:var(--line);background:var(--white)}
+:root .badge{border-color:var(--line);color:var(--on-accent)}
+:root .badge.subagent{background:#2d3547}
+:root .badge.request{background:var(--white)}
+:root .stages span{border-color:var(--line);background:var(--white)}
+:root .stages span.cur{color:var(--on-accent)}
+:root .cases .open[aria-current=true]{border-color:var(--line);background:var(--white);box-shadow:3px 3px 0 var(--shadow)}
+:root .stt{border-color:var(--line);background:var(--white)}
+:root .stt.s0{background:#453e29}
+:root .stt.s1{background:#234237}
+:root .stt.s2{background:#252b36}
+:root .dot2{border-color:var(--line)}
+:root .tg{border-color:var(--line);background:var(--white)}
+:root .tg .sw{border-color:var(--line);background:var(--line)}
+:root .tg .sw::after{background:var(--white);border-color:var(--line)}
+:root .round{border-color:var(--line);background:var(--white)}
+:root .npop{background:var(--white);border-color:var(--line);box-shadow:5px 5px 0 var(--shadow)}
+:root .npop .ph{border-bottom-color:var(--line)}
+:root .npop .st{border-color:var(--line);background:var(--white)}
+:root .npop .st.work{color:var(--ink)}
+:root .npop .pt{border-bottom-color:var(--line)}
+:root .npop .ent{border-color:var(--line)}
+:root .npop .ent .eh{border-bottom-color:var(--line);background:#23364b}
+:root .npop .ent.out .eh{background:#234237}
+:root .npop .ent.note .eh{background:#453e29}
+:root .q{background:var(--strong);color:var(--ink)}
+:root .a{border-color:var(--line);background:var(--white);box-shadow:3px 3px 0 var(--shadow)}
+:root .a .meta span{border-color:var(--line);color:var(--ink)}
+:root .a .meta span.mode{background:var(--white);border-color:var(--line)}
+:root .spin{border-color:var(--line)}
+:root .thh select{border-color:var(--line);background:var(--white)}
+:root .ask{border-top-color:var(--line)}
+:root .ask textarea{border-color:var(--line);background:var(--white)}
+:root dialog{border-color:var(--line);box-shadow:6px 6px 0 var(--shadow)}
+:root .mg-l{border-right-color:var(--line);border-bottom-color:var(--line)}
+:root .mg-l button.ag{border-color:var(--line);background:var(--white)}
+:root .mg-l button.ag[aria-current=true]{background:var(--strong);color:var(--ink)}
+:root .mg-r input{border-color:var(--line)}
+:root .mg-r textarea{border-color:var(--line)}
+:root .mg-r .acts .danger{background:var(--white)}
+:root .docs li{border-color:var(--line);background:var(--white)}
+:root .up{border-color:var(--line)}
+:root .mg-head{border-bottom-color:var(--line)}
+:root .drop{border-color:var(--line)}
+:root .files li{border-top-color:var(--line)}
+:root .files .s{border-color:var(--line);background:var(--white)}
+:root .files li.done .s{color:var(--ink)}
+:root .files li.fail .s{color:var(--ink)}
+:root .bar-p{border-color:var(--line);background:var(--white)}
+:root .stats div{border-color:var(--line);background:var(--white);box-shadow:3px 3px 0 var(--shadow)}
+:root .prio li::before{border-color:var(--line)}
+:root .lines div{border-color:var(--line);background:var(--white)}
+:root .hb .t{border-color:var(--line);background:var(--white)}
+:root .hb .t u{background:var(--strong)}
+:root .legend i{border-color:var(--line)}
+:root .cols{border-bottom-color:var(--line)}
+:root .cols i{border-color:var(--line)}
+:root .seg{border-color:var(--line)}
+:root .seg button{background:var(--white)}
+:root .seg button[aria-pressed=true]{background:var(--strong);color:var(--ink)}
+:root details.rep{border-color:var(--line);background:var(--white)}
+:root .lv{border-color:var(--line)}
+:root .alltext{background:var(--white);border-color:var(--line)}
+:root .msg.err{background:var(--white)}
+:root .caret::after{background:var(--strong)}
+:root .result{border-color:var(--line);background:var(--white)}
+:root .steps{border-bottom-color:var(--line);background:var(--white)}
+:root .npop .st.off{background:#252b36}
+:root .pcard{border-color:var(--line);background:var(--white)}
+:root .pcard[aria-current=true]{background:var(--strong);color:var(--on-accent)}
+:root .think{border-color:var(--line)}
+:root .step i{border-color:var(--line)}
+:root .mem{background:var(--white);border-color:var(--line)}
+:root .skills li{border-color:var(--line);background:var(--white)}
+:root dialog input{border-color:var(--line)}
+:root dialog textarea{border-color:var(--line)}
+
+/* 밝은 그래프/차트 표식과 상태 표시의 가독성. */
+:root .lv{color:#14101F}
+:root .status.ok{color:#7ec5a7}
+:root .msg a{color:var(--cobalt)}
+
+/* 선택/오류/입력 포커스 색은 기존 상태 구분을 유지한다. */
+:root .btn.blue,:root .msg.user{background:var(--cobalt);color:var(--on-accent)}
+:root .btn.blue:hover{background:var(--cobalt-d)}
+:root .tag{background:var(--gold)}
+:root .pcard[aria-current=true]{color:var(--on-ink)}
+:root .explain{border-left-color:var(--cobalt)}
+:root .alert,:root .msg.err{border-left-color:var(--coral)}
+:root .badge.mcp{color:var(--ink)}
+:root .tg[aria-checked=true] .sw{background:var(--mint)}
+:root .composer input:focus,:root .composer textarea:focus,
+:root .ask textarea:focus,:root .keybox:focus-within{border-color:var(--cobalt)}
+:root .spin{border-right-color:transparent}
+:root .skills .on{color:#7ec5a7}
+:root .caret::after{background:var(--ink)}
