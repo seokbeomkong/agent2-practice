@@ -10,8 +10,6 @@
 <style>
   .gate{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:space-between;gap:48px;padding:clamp(24px,5vw,64px)}
   .gate .brand{font:800 20px var(--display)}
-  .gate h1{font-size:clamp(2.2rem,5.2vw,4rem);font-weight:800;line-height:1.12;letter-spacing:-.025em;max-width:16ch}
-  .gate .lead{margin-top:16px;color:var(--muted);max-width:48ch;font-size:17px}
   form{margin-top:32px;max-width:640px}
   label{display:block;font-weight:600;margin-bottom:8px}
   .field{display:flex;gap:8px}
@@ -41,12 +39,28 @@
   .rack.lit .slot:nth-child(3) .pic,.rack.lit .slot:nth-child(3) p::before{transition-delay:.5s}
   .rack.lit .slot:nth-child(4) .pic,.rack.lit .slot:nth-child(4) p::before{transition-delay:.75s}
   @media(max-width:720px){.rack{grid-template-columns:repeat(2,1fr)}.field{flex-direction:column}}
-  /* 한 화면 구성: 넓은 화면에서는 창 높이에 맞춰 글자·여백·썸네일 높이를 줄인다 */
+  /* 제목: 서비스 이름이 이 화면의 헤드라인이다 */
+  :root .gate .brand{font-family:var(--display);font-weight:400!important;font-size:clamp(2rem,min(6.2vw,9.5vh),5rem);line-height:1.1;letter-spacing:0}
+  /* 한 화면 구성: 넓은 화면에서는 위쪽(제목·키 입력) 아래 남는 높이를 2×2 썸네일이 꽉 채운다.
+     썸네일 상자 가로 폭은 남는 높이에서 계산해(cqh) 16:10 비율이 찌그러지지 않게 한다. */
   @media(min-width:721px){
-    .gate{height:100vh;height:100dvh;min-height:0;overflow:auto;gap:clamp(16px,4vh,48px);padding:clamp(20px,5vh,64px) clamp(24px,5vw,64px)}
-    :root .gate h1{font-size:clamp(2rem,min(5.6vw,7vh),4.4rem)}
-    .gate .intro{margin-top:clamp(12px,4vh,88px)!important}
-    .slot .pic{aspect-ratio:auto;height:clamp(60px,22vh,280px)}
+    .gate{height:100vh;height:100dvh;min-height:0;overflow:hidden;gap:clamp(12px,3vh,32px);padding:clamp(20px,4vh,56px) clamp(24px,5vw,64px)}
+    .gate .intro{margin-top:clamp(10px,2.5vh,32px)!important}
+    .gate .status{min-height:0;margin-top:8px}
+    .rackwrap{flex:1;min-height:0;container-type:size}
+    .rack{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;height:100%;align-content:end;
+          width:min(100%,calc((100cqh - 20px - 2*46px) / 2 * 1.6 * 2 + 20px))}
+  }
+  /* 가로가 넓은 화면: 제목·키 입력은 왼쪽, 2×2 썸네일은 오른쪽에 두어 썸네일을 가장 크게 쓴다 */
+  @media(min-width:1000px){
+    .gate{flex-direction:row;align-items:stretch;justify-content:flex-start;gap:clamp(28px,4vw,72px)}
+    .gate > div:first-child{flex:0 0 clamp(340px,34vw,640px);display:flex;flex-direction:column;justify-content:center;min-width:0}
+    :root .gate .brand{font-size:clamp(2.2rem,min(4.2vw,8vh),4.6rem)}
+    .gate .intro{margin-top:clamp(24px,5vh,56px)!important}
+    .rackwrap{height:100%}
+    .rack{align-content:center;margin-left:auto}
+    .field{flex-direction:column;align-items:stretch}
+    .field .btn{justify-content:center}
   }
 </style>
 <link rel="stylesheet" href="assets/console-colors.css">
@@ -56,8 +70,6 @@
   <div>
     <div class="brand">하루만에 익히는 Agent 개발 Demo</div>
     <div class="intro" style="margin-top:clamp(32px,8vh,88px)">
-      <h1>API 키를 연결하면 실습 네 가지가 켜집니다</h1>
-
       <form id="f" novalidate>
         <label for="key">Claude API 키</label>
         <div class="field">
@@ -72,7 +84,7 @@
       </form>
     </div>
   </div>
-  <div class="rack" id="rack" aria-label="잠겨 있는 실습 네 가지"></div>
+  <div class="rackwrap"><div class="rack" id="rack" aria-label="잠겨 있는 실습 네 가지"></div></div>
 </main>
 
 <script src="assets/common.js"></script>
