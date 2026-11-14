@@ -85,8 +85,15 @@
   .msg.err code{display:block;font:12px var(--mono);color:var(--muted)}
   .caret::after{content:"";display:inline-block;width:8px;height:15px;background:var(--ink);margin-left:2px;vertical-align:-2px;animation:blink 1s steps(1) infinite}
   @keyframes blink{50%{opacity:0}}
-  @media(max-width:1240px){.layout{grid-template-columns:260px minmax(0,1fr)}.chatcol{grid-column:1/-1}.chat{height:480px}}
-  @media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr)}.charts{grid-template-columns:minmax(0,1fr)}}
+  @media(max-width:1240px){.layout{grid-template-columns:240px minmax(0,1fr) 300px}.charts{grid-template-columns:minmax(0,1fr)}}
+  @media(max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}.chat{height:480px}}
+  /* 한 화면 구성: 세 패널이 창 높이를 채우고, 목록·결과·대화는 패널 안에서 스크롤 */
+  @media(min-width:901px){
+    .chat{height:auto}
+    .files{flex:1;min-height:0;max-height:none}
+    .view{flex:1;min-height:0;overflow:auto}
+    .tabs,.src,.drop,.bar-p,.runbox{flex:none}
+  }
 </style>
 <link rel="stylesheet" href="assets/console-colors.css">
 </head>

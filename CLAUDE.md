@@ -55,6 +55,8 @@ CH1(환경 설정), CH2(Agent View 병렬 개발)는 도구 사용법 중심이�
   - CH4 페르소나 챗봇: Deep Agents. Tool(시각, HTML 생성, Skill 설치/관리), Skill, 캐릭터별 Memory(AGENTS.md), 채팅 기록, 사고 과정 실시간 표시 (모두 방문자별 저장소에 저장)
   - CH4 Orchestration: Orchestrator → Latte(Subagent) → Cat(MCP + Tool) → Emoji(Tool) ↔ Feedback(A2A, 재시도 최대 3번)
   - CH5 보험심사팀: 완전한 Full-Mesh(사람 → Orchestrator → 모든 전문가 Tool, 전문가끼리 모두 A2A). 부른 전문가가 다른 모든 전문가와 A2A로 최대 2번 조율(모두 동의 시 종료), 피드백 중 ask_peer로 직접 질의. Full-Mesh 끄기 시 Supervisor 구조. 사건별 대화(새 사건/목록/상태: 진행 중·완료·보류, 사건별 Agent 기억 저장), 전문가 추가/수정/삭제(실행 중 A2A 서버 동적 등록), 전문가별 참조 문서(PDF/txt/md, 글자만 뽑아 저장) 업로드/삭제 후 read_file로 읽고 답변, 답변 10줄 이내
+- 모든 화면은 넓은 화면(901px 이상)에서 페이지 스크롤 없이 한 화면에 들어가는 구성이다. 실습 화면은 `common.js`의 `mountBar`가 `body.lab`을 붙이고, `common.css`가 창 높이에 맞춘다. 긴 내용은 각 패널 안에서만 스크롤한다. 좁은 화면(모바일)은 기존처럼 세로로 쌓고 스크롤한다.
+- 보험심사팀 화면은 그래프가 오른쪽 전체를 차지한다. 사건 대화와 협의 로그는 그래프 창 오른쪽 아래 버튼으로 여닫는 화면 안 팝업(`#chatPop`, `#logPop`)이다. 닫혀 있을 때 새 내용이 오면 버튼에 빨간 점이 뜬다.
 - 그래프 화면은 서버가 보낸 nodes/links(`/api/orchestra/graph`, `/api/audit/graph`)로만 그리고, 실행 이벤트(SSE)를 순서대로 재생한다.
 - 노드를 클릭하면 그 Agent가 받은 요청·결과 전체가 팝업으로 열리고, 다시 클릭하면 닫힌다(`detail` 이벤트). 자동 말풍선은 쓰지 않는다.
 - Orchestration 앱은 Latte/Cat/Emoji/Feedback을 켜고 끌 수 있다(꺼진 Agent는 서버에서도 빠짐, Emoji를 끄면 Feedback도 꺼짐).

@@ -48,8 +48,18 @@
   dialog label{font-weight:700;display:grid;gap:6px}
   dialog input,dialog textarea{border:2px solid var(--ink);border-radius:6px;padding:10px 12px;resize:vertical}
   dialog .row{display:flex;gap:8px;justify-content:flex-end}
-  @media(max-width:1240px){.layout{grid-template-columns:240px minmax(0,1fr)}.side{grid-column:1/-1;grid-template-columns:1fr 1fr}}
-  @media(max-width:760px){.layout{grid-template-columns:minmax(0,1fr)}.side{grid-template-columns:1fr}.chat{height:560px}}
+  @media(max-width:1240px){.layout{grid-template-columns:220px minmax(0,1fr) 260px}}
+  @media(max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}.side{grid-template-columns:1fr}.chat{height:560px}}
+  /* 한 화면 구성: 세 열이 창 높이를 채우고, 캐릭터·대화 목록·기억·Skill은 각자 안에서 스크롤 */
+  @media(min-width:901px){
+    .chat{height:auto}
+    .pick{flex:none;max-height:45%;overflow:auto}
+    .sect{flex:none}
+    .chats{flex:1;min-height:0;max-height:none}
+    .side{grid-template-rows:minmax(0,1fr) minmax(0,1fr);min-height:0}
+    .side .panel-b{flex:1;min-height:0;overflow:auto}
+    .mem{max-height:none}
+  }
 </style>
 <link rel="stylesheet" href="assets/console-colors.css">
 </head>

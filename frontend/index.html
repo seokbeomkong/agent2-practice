@@ -41,6 +41,13 @@
   .rack.lit .slot:nth-child(3) .pic,.rack.lit .slot:nth-child(3) p::before{transition-delay:.5s}
   .rack.lit .slot:nth-child(4) .pic,.rack.lit .slot:nth-child(4) p::before{transition-delay:.75s}
   @media(max-width:720px){.rack{grid-template-columns:repeat(2,1fr)}.field{flex-direction:column}}
+  /* 한 화면 구성: 넓은 화면에서는 창 높이에 맞춰 글자·여백·썸네일 높이를 줄인다 */
+  @media(min-width:721px){
+    .gate{height:100vh;height:100dvh;min-height:0;overflow:auto;gap:clamp(16px,4vh,48px);padding:clamp(20px,5vh,64px) clamp(24px,5vw,64px)}
+    :root .gate h1{font-size:clamp(2rem,min(5.6vw,7vh),4.4rem)}
+    .gate .intro{margin-top:clamp(12px,4vh,88px)!important}
+    .slot .pic{aspect-ratio:auto;height:clamp(60px,22vh,280px)}
+  }
 </style>
 <link rel="stylesheet" href="assets/console-colors.css">
 </head>
@@ -48,9 +55,8 @@
 <main class="gate">
   <div>
     <div class="brand">하루만에 익히는 Agent 개발 Demo</div>
-    <div style="margin-top:clamp(32px,8vh,88px)">
+    <div class="intro" style="margin-top:clamp(32px,8vh,88px)">
       <h1>API 키를 연결하면 실습 네 가지가 켜집니다</h1>
-      <p class="lead">교안에서 만든 결과물을 내 키로 직접 실행해 볼 수 있어요.</p>
 
       <form id="f" novalidate>
         <label for="key">Claude API 키</label>

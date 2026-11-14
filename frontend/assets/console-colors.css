@@ -115,6 +115,9 @@
 :root .result{border-color:var(--line);background:var(--white)}
 :root .steps{border-bottom-color:var(--line);background:var(--white)}
 :root .npop .st.off{background:#252b36}
+:root .fpop{background:var(--white);border-color:var(--line);box-shadow:5px 5px 0 var(--shadow)}
+:root .fpop .fh{border-bottom-color:var(--line)}
+:root .fab .unread{border-color:var(--shadow)}
 :root .pcard{border-color:var(--line);background:var(--white)}
 :root .pcard[aria-current=true]{background:var(--strong);color:var(--on-accent)}
 :root .think{border-color:var(--line)}

@@ -9,8 +9,7 @@
 <link rel="stylesheet" href="assets/common.css">
 <style>
   .layout{display:grid;grid-template-columns:290px minmax(0,1fr);gap:20px;padding:0 20px 32px;align-items:start}
-  .left,.right{display:grid;gap:20px;min-width:0}
-  .bottom{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px}
+  .left{display:grid;gap:20px;min-width:0}
 
   /* 사건 목록 */
   .cases{list-style:none;margin:0;padding:8px;max-height:360px;overflow:auto;display:grid;gap:6px}
@@ -44,7 +43,7 @@
 
   /* 노드 팝업 (Orchestration 앱과 같은 방식) */
   .stage-bg{position:relative}
-  .npop{position:absolute;z-index:5;width:min(390px,calc(100% - 24px));max-height:calc(100% - 24px);display:flex;flex-direction:column;
+  .npop{position:absolute;z-index:50;width:min(390px,calc(100% - 24px));max-height:calc(100% - 24px);display:flex;flex-direction:column;
         background:#fff;border:2px solid var(--ink);border-radius:12px;box-shadow:5px 5px 0 var(--ink);animation:npop .15s ease-out}
   @keyframes npop{from{transform:scale(.96);opacity:0}}
   .npop[hidden]{display:none}
@@ -66,7 +65,7 @@
   .npop .none{color:var(--muted);font-size:14px}
 
   /* 사건 대화 */
-  .thread{height:430px;overflow:auto;padding:14px;display:grid;gap:12px;align-content:start}
+  .thread{flex:1;min-height:0;overflow:auto;padding:14px;display:grid;gap:12px;align-content:start}
   .q{justify-self:end;max-width:85%;background:var(--ink);color:#fff;border-radius:14px 14px 4px 14px;padding:10px 14px;white-space:pre-wrap}
   .a{border:2px solid var(--ink);border-radius:10px;background:#fff;padding:12px 14px;box-shadow:3px 3px 0 var(--ink)}
   .a .first{font:400 1.15rem/1.4 var(--display);margin-bottom:6px}
@@ -86,8 +85,32 @@
   .ask textarea:focus{border-color:var(--cobalt);outline:none}
   .ask .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .ask .row .btn{margin-left:auto}
-  .logbox{height:520px;overflow:auto}
+  .logbox{flex:1;min-height:0;overflow:auto}
   .log .row{border-left-width:4px}
+
+  /* 그래프 창 귀퉁이의 버튼 + 그래프 위에 뜨는 팝업 창 (사건 대화 / 협의 로그) */
+  .fabs{position:absolute;right:12px;bottom:12px;z-index:40;display:flex;gap:8px}
+  .fab{position:relative}
+  .fab[aria-expanded=true]{outline:3px solid var(--cobalt);outline-offset:2px}
+  .fab .unread{position:absolute;top:-6px;right:-6px;width:13px;height:13px;border-radius:50%;background:var(--coral);border:2px solid var(--ink)}
+  .fab .unread[hidden]{display:none}
+  .fpop{position:absolute;z-index:30;bottom:64px;display:flex;flex-direction:column;height:min(620px,calc(100% - 76px));
+        background:#fff;border:2px solid var(--ink);border-radius:12px;box-shadow:5px 5px 0 var(--ink);overflow:hidden;animation:npop .15s ease-out}
+  .fpop[hidden]{display:none}
+  /* 두 팝업 모두 버튼이 있는 오른쪽 아래에서 열린다. 대화가 열려 있으면 로그는 그 왼쪽 옆에 붙는다 (버튼 순서와 같은 배치) */
+  .fpop{transform-origin:right bottom}
+  .chatpop{right:12px;width:min(460px,calc(100% - 24px))}
+  .logpop{right:12px;width:min(400px,calc(100% - 24px))}
+  .stage-bg.chat-open .logpop{right:max(12px,min(484px,calc(100% - 412px)))}
+  /* 예시 사건은 한 줄로 가로 스크롤 → 대화 내용이 보이는 높이를 확보 */
+  .fpop .ask textarea{min-height:56px;height:56px}
+  .fpop .ask .row{flex-wrap:nowrap}
+  .pre{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;padding-bottom:2px;scrollbar-width:thin}
+  .pre .chip{flex:none}
+  .fpop .fh{flex:none;display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-bottom:2px solid var(--ink);background:var(--gold);font-weight:700;min-width:0}
+  .fpop .fh .x{margin-left:auto;border:0;background:none;font-size:22px;line-height:1;cursor:pointer;padding:2px 6px;color:inherit}
+  .fpop .ask{flex:none}
+  .gpanel .glegend{padding-right:250px}
 
   /* Agent 관리 창 */
   dialog{border:2px solid var(--ink);border-radius:14px;padding:0;width:min(900px,94vw);max-height:90vh;box-shadow:6px 6px 0 var(--ink)}
@@ -113,8 +136,17 @@
   .mg-head h2{font-size:1.3rem}
   .msgline{font-size:13px;min-height:18px}
   .msgline.err{color:var(--coral);font-weight:700} .msgline.ok{color:var(--mint);font-weight:700}
-  @media(max-width:1180px){.bottom{grid-template-columns:minmax(0,1fr)}}
-  @media(max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}.mg{grid-template-columns:1fr}.mg-l{border-right:0;border-bottom:2px solid var(--ink)}}
+  @media(max-width:1100px){.layout{grid-template-columns:240px minmax(0,1fr)}}
+  @media(max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}.mg{grid-template-columns:1fr}.mg-l{border-right:0;border-bottom:2px solid var(--ink)}
+    .fpop,.stage-bg.chat-open .logpop{position:fixed;left:8px;right:8px;bottom:8px;width:auto;height:75vh}.gpanel .glegend{padding-right:12px;padding-bottom:56px}}
+  /* 한 화면 구성: 왼쪽은 사건 목록이 남는 높이를 쓰고, 오른쪽 그래프는 창 높이에 맞춰 줄고 늘어난다(비율 유지) */
+  @media(min-width:901px){
+    .left{grid-template-rows:minmax(0,1fr) auto;min-height:0}
+    .cases{flex:1;min-height:0;max-height:none}
+    .gpanel .stage-bg{flex:1;min-height:0;display:flex;flex-direction:column}
+    #g{flex:1;min-height:0;height:auto}
+    .glegend{flex:none}
+  }
 </style>
 <link rel="stylesheet" href="assets/console-colors.css">
 </head>
@@ -139,31 +171,38 @@ App.mountHead(lab, '보험사 심사팀을 Agent로 옮긴 앱입니다. Orchest
     </section>
   </div>
 
-  <div class="right">
-    <section class="panel" aria-label="보험심사팀 그래프">
-      <div class="panel-h"><div class="gh">보험심사팀 <span class="round" id="round" hidden></span></div>
-        <div class="gh"><span class="mode" id="modeTxt"></span><button type="button" class="tg" role="switch" id="mesh" aria-checked="true"><span class="sw"></span>Full-Mesh</button></div></div>
-      <div class="stage-bg" id="stage">
-        <svg id="g" role="img" aria-label="사람, Orchestrator, 전문가 Agent의 연결 그래프"></svg>
-        <div class="npop" id="pop" hidden role="dialog" aria-labelledby="popTitle"></div>
-      </div>
-    </section>
-    <div class="bottom">
-      <section class="panel" aria-label="사건 대화">
-        <div class="panel-h"><div class="thh"><span id="caseTitle">사건</span></div>
-          <div class="thh"><label for="status" style="font-size:13px;color:var(--muted);font-weight:500">처리 상태</label><select id="status"><option>진행 중</option><option>완료</option><option>보류</option></select></div></div>
+  <section class="panel gpanel" aria-label="보험심사팀 그래프">
+    <div class="panel-h"><div class="gh">보험심사팀 <span class="round" id="round" hidden></span></div>
+      <div class="gh"><span class="mode" id="modeTxt"></span><button type="button" class="tg" role="switch" id="mesh" aria-checked="true"><span class="sw"></span>Full-Mesh</button></div></div>
+    <div class="stage-bg" id="stage">
+      <svg id="g" role="img" aria-label="사람, Orchestrator, 전문가 Agent의 연결 그래프"></svg>
+      <div class="npop" id="pop" hidden role="dialog" aria-labelledby="popTitle"></div>
+
+      <!-- 사건 대화 팝업: 그래프 창 안에 뜬다 -->
+      <section class="fpop chatpop" id="chatPop" hidden role="dialog" aria-label="사건 대화">
+        <div class="fh"><div class="thh"><span id="caseTitle">사건</span></div>
+          <div class="thh"><label for="status" style="font-size:13px;font-weight:500;white-space:nowrap">처리 상태</label><select id="status"><option>진행 중</option><option>완료</option><option>보류</option></select></div>
+          <button class="x" type="button" data-close="chatPop" aria-label="사건 대화 닫기">×</button></div>
         <div class="thread" id="thread" aria-live="polite"></div>
         <form class="ask" id="cf">
           <textarea id="ci" aria-label="사건 내용" placeholder="판단할 사건이나 이어서 물어볼 내용을 적어 주세요."></textarea>
           <div class="row" id="presets"></div>
         </form>
       </section>
-      <section class="panel" aria-label="협의 로그">
-        <div class="panel-h">협의 로그</div>
+
+      <!-- 협의 로그 팝업 -->
+      <section class="fpop logpop" id="logPop" hidden role="dialog" aria-label="협의 로그">
+        <div class="fh">협의 로그<button class="x" type="button" data-close="logPop" aria-label="협의 로그 닫기">×</button></div>
         <div class="logbox"><div class="log" id="log"><p class="log-empty" id="lg0">심사를 시작하면 Agent들이 주고받은 내용이 여기에 쌓여요.</p></div></div>
       </section>
+
+      <!-- 그래프 창 오른쪽 아래 귀퉁이 버튼: 누르면 팝업이 열리고, 다시 누르면 닫힌다 -->
+      <div class="fabs">
+        <button type="button" class="btn ghost sm fab" id="logBtn" data-pop="logPop" aria-controls="logPop" aria-expanded="false">협의 로그<i class="unread" hidden></i></button>
+        <button type="button" class="btn blue sm fab" id="chatBtn" data-pop="chatPop" aria-controls="chatPop" aria-expanded="false">사건 대화<i class="unread" hidden></i></button>
+      </div>
     </div>
-  </div>
+  </section>
 </main>
 
 <dialog id="dlg" aria-labelledby="mgTitle">
@@ -243,7 +282,30 @@ function placePopup() {
   pop.style.left = x + 'px'; pop.style.top = Math.max(pad, Math.min(stage.height - h - pad, ny - 60)) + 'px';
 }
 addEventListener('resize', () => openId && placePopup());
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && openId && !$('#dlg').open) closePopup(); });
+
+// ── 그래프 창 안의 팝업 (사건 대화 / 협의 로그): 귀퉁이 버튼으로 열고 닫는다. 새 창이 아니라 같은 화면 위에 뜬다.
+let popZ = 30;
+const floatBtn = id => document.querySelector(`[data-pop="${id}"]`);
+function openFloat(id) {
+  const p = $('#' + id); p.hidden = false; p.style.zIndex = ++popZ;   // 나중에 연 팝업이 위로
+  floatBtn(id).setAttribute('aria-expanded', 'true'); floatBtn(id).querySelector('.unread').hidden = true;
+  if (id === 'chatPop') $('#stage').classList.add('chat-open');
+  if (id === 'chatPop') $('#thread').scrollTop = 1e9; else $('#log').parentElement.scrollTop = 1e9;
+}
+function closeFloat(id) { $('#' + id).hidden = true; floatBtn(id).setAttribute('aria-expanded', 'false'); if (id === 'chatPop') $('#stage').classList.remove('chat-open'); }
+const toggleFloat = id => $('#' + id).hidden ? openFloat(id) : closeFloat(id);
+// 팝업이 닫혀 있을 때 새 내용이 오면 버튼에 빨간 점을 띄운다
+const markUnread = id => { if ($('#' + id).hidden) floatBtn(id).querySelector('.unread').hidden = false; };
+document.querySelectorAll('[data-pop]').forEach(b => b.onclick = () => toggleFloat(b.dataset.pop));
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => { closeFloat(b.dataset.close); floatBtn(b.dataset.close).focus(); });
+
+// Esc: 노드 팝업 → 가장 위에 있는 대화/로그 팝업 순서로 닫는다
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || $('#dlg').open) return;
+  if (openId) return closePopup();
+  const top = ['chatPop', 'logPop'].filter(id => !$('#' + id).hidden).sort((a, b) => $('#' + b).style.zIndex - $('#' + a).style.zIndex)[0];
+  if (top) { closeFloat(top); floatBtn(top).focus(); }
+});
 function addDetail(agent, title, text, kind, time) {
   if (!DETAILS[agent]) DETAILS[agent] = [];
   DETAILS[agent].push({ title, text, kind, time: time || nowTime() });
@@ -278,14 +340,14 @@ async function openCase(id) {
 $('#cases').onclick = async e => {
   if (running) return;
   const o = e.target.closest('[data-c]'), d = e.target.closest('[data-del]');
-  if (o) return openCase(o.dataset.c);
+  if (o) { await openCase(o.dataset.c); return openFloat('chatPop'); }
   if (d && confirm('이 사건과 대화 기록을 삭제할까요?')) {
     await api(`/api/audit/cases/${d.dataset.del}`, { method: 'DELETE' });
     if (d.dataset.del === caseId) caseId = null;
     loadCases();
   }
 };
-$('#newCase').onclick = async () => { if (running) return; const c = await (await api('/api/audit/cases', { method: 'POST' })).json(); await loadCases(c.id); $('#ci').focus({ preventScroll: true }); };
+$('#newCase').onclick = async () => { if (running) return; const c = await (await api('/api/audit/cases', { method: 'POST' })).json(); await loadCases(c.id); openFloat('chatPop'); $('#ci').focus({ preventScroll: true }); };
 $('#status').onchange = async () => { await api(`/api/audit/cases/${caseId}`, { json: { status: $('#status').value }, method: 'PATCH' }); loadCases(caseId); };
 
 // ── 사건 대화
@@ -301,7 +363,7 @@ const CASES = [
   '러닝 동호회를 위한 보험 상품을 개발하여, 사업성을 더 높일 수 있을까?',
   '고객이 이민 간다고 환불해 달라고 하는데, 어떤 멘트로 거절을 해야 할까?'
 ];
-$('#presets').innerHTML = CASES.map((c, i) => `<button type="button" class="chip" data-i="${i}">${esc(c.slice(0, 18))}…</button>`).join('') + '<button class="btn blue" id="run">심사 시작</button>';
+$('#presets').innerHTML = `<div class="pre">${CASES.map((c, i) => `<button type="button" class="chip" data-i="${i}" title="${esc(c)}">${esc(c.slice(0, 18))}…</button>`).join('')}</div><button class="btn blue" id="run">심사 시작</button>`;
 $('#presets').onclick = e => { const b = e.target.closest('[data-i]'); if (b) $('#ci').value = CASES[b.dataset.i]; };
 
 function log(who, to, text, kind) {
@@ -310,7 +372,7 @@ function log(who, to, text, kind) {
   row.style.borderColor = COLORS[who] === '#FFD400' ? '#C9A400' : (COLORS[who] || '#D8D2EE');
   row.innerHTML = `<span class="who">${esc(NODES[who]?.name || who)}${to ? ` <span style="font-weight:400;color:var(--muted)">에서</span> ${esc(NODES[to]?.name || to)}` : ''}${kind ? `<span class="badge ${kind}">${{ request: '요청', tool: 'Tool', a2a: 'A2A' }[kind] || kind}</span>` : ''}</span>
     <span class="t">${nowTime()}</span><span class="what">${esc(text)}</span>`;
-  $('#log').append(row); $('#log').parentElement.scrollTop = 1e9;
+  $('#log').append(row); $('#log').parentElement.scrollTop = 1e9; markUnread('logPop');
 }
 
 const play = AgentGraph.player(async ev => {
@@ -327,11 +389,11 @@ const play = AgentGraph.player(async ev => {
   if (ev.type === 'result') {
     $('#thread .a.wait')?.remove();
     addAnswer({ conclusion: ev.text, agreements: ev.agreements, names: ev.names, mesh: $('#mesh').getAttribute('aria-checked') === 'true' });
-    $('#thread').scrollTop = 1e9; return;
+    $('#thread').scrollTop = 1e9; markUnread('chatPop'); return;
   }
   if (ev.type === 'error') {
     $('#thread .a.wait')?.remove();
-    $('#thread').insertAdjacentHTML('beforeend', `<div class="a err"><b>${esc(ev.message)}</b><code>${esc(ev.detail || '')}</code></div>`); return;
+    $('#thread').insertAdjacentHTML('beforeend', `<div class="a err"><b>${esc(ev.message)}</b><code>${esc(ev.detail || '')}</code></div>`); markUnread('chatPop'); return;
   }
   if (ev.type === 'done') {
     G.clear(); WORKING.clear(); running = false; $('#round').hidden = true;
