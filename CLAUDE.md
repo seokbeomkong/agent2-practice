@@ -44,7 +44,7 @@ CH1(환경 설정), CH2(Agent View 병렬 개발)는 도구 사용법 중심이�
 ## 현재 진행 상황
 
 - 배포: **Vercel**(무료 Hobby)에 올린다. 서버리스라 요청마다 다른 인스턴스에서 실행되고 파일이 남지 않으므로, 사용자 데이터는 모두 `kv.py`의 저장소(배포: Upstash Redis, 로컬: `data/store.json`)에 둔다.
-  - 방문자 구분: 브라우저가 만든 랜덤 번호(`visitorId`, localStorage)를 `X-Visitor-Id` 헤더(문서/HTML 링크는 `?v=`)로 보내고, 저장소 키는 `u:{방문자}:...`로 분리한다. 마지막 쓴 뒤 30일이면 사라진다.
+  - 방문자 구분: 브라우저 탭이 만든 랜덤 번호(`visitorId`, sessionStorage — API 키와 같은 수명)를 `X-Visitor-Id` 헤더(문서/HTML 링크는 `?v=`)로 보내고, 저장소 키는 `u:{방문자}:...`로 분리한다. 새 탭·새 접속은 빈 상태로 시작하고 새로고침은 이어진다. **연결 해제**를 누르면 `POST /api/session/clear`(`kv.purge_visitor`)가 그 방문자의 데이터를 모두 지우고 키·방문자 번호도 버린다. 탭을 그냥 닫은 경우에 대비해 마지막으로 쓴 뒤 24시간이 지나면 사라진다.
   - Vercel 한도에 맞춘 규칙: 함수 최대 300초(`vercel.json`), 요청 본문 4.5MB → 업로드 4MB 이하, 쓰기 가능한 곳은 임시 폴더뿐(Deep Agents 파일 공간은 실행 중에만 임시 폴더에 펼치고 끝나면 저장소로 되돌림), SSE는 15초마다 ping.
   - 사용 한도(공개 서버 보호): 캐릭터 12, 전문가 8, 전문가당 문서 5개·문서당 글자 60만자, 사건 30, 설치 Skill 1.5MB.
   - 환경변수: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (마켓플레이스 연동 시 `KV_REST_API_URL/TOKEN` 이름도 인식). Vercel에서 저장소가 없으면 파일에 몰래 저장하지 않고 안내 오류를 낸다. 확인: `/api/health`

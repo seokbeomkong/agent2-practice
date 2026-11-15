@@ -113,6 +113,12 @@ def health():
     return {"ok": True, "store": kv.mode()}
 
 
+@app.post("/api/session/clear")
+def clear_session():
+    """연결 해제: 이 방문자가 만든 데이터(캐릭터·대화·기억·사건·문서·Skill)를 모두 지운다. 키는 서버에 없으니 지울 것도 없다."""
+    return {"ok": True, "removed": kv.purge_visitor()}
+
+
 @app.post("/api/key-test")
 async def key_test(x_claude_key: str | None = Header(None)):
     # 키 확인용 짧은 호출: 생각에 쓰는 토큰까지 고려해 max_tokens를 넉넉히 두고 effort는 낮춘다.

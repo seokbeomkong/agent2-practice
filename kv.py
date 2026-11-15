@@ -5,7 +5,8 @@
   (Vercel 마켓플레이스 연동 시 KV_REST_API_URL / KV_REST_API_TOKEN 이름으로도 들어온다)
 - 로컬 개발: data/store.json 파일 (같은 명령을 흉내 낸다. 외부 서비스 없이 바로 실행된다)
 
-데이터는 방문자(브라우저)마다 따로 둔다: 키는 u:{방문자번호}:... 로 시작하고, 마지막으로 쓴 뒤 30일이 지나면 사라진다.
+데이터는 방문자(브라우저 탭)마다 따로 둔다: 키는 u:{방문자번호}:... 로 시작한다.
+연결을 해제하면 purge_visitor()로 그 방문자의 데이터를 모두 지우고, 탭을 그냥 닫은 경우에 대비해 마지막으로 쓴 뒤 24시간이 지나면 사라진다.
 """
 import contextvars
 import json
@@ -16,7 +17,7 @@ from pathlib import Path
 
 import httpx
 
-TTL = 30 * 24 * 3600
+TTL = 24 * 3600
 LOCAL_FILE = Path(__file__).resolve().parent / "data" / "store.json"
 
 current_visitor: contextvars.ContextVar[str] = contextvars.ContextVar("visitor", default="")
@@ -101,6 +102,11 @@ class LocalBackend:
             return lst[int(c[2]): None if end == -1 else end + 1], False
         if op == "EXPIRE":
             return 1, False
+        if op == "PURGE":  # 접두사로 시작하는 키를 모두 지운다 (Redis의 SCAN + DEL을 흉내 낸 것)
+            gone = [k for k in d if k.startswith(str(c[1]))]
+            for k in gone:
+                d.pop(k)
+            return len(gone), bool(gone)
         raise StoreError(f"지원하지 않는 저장소 명령입니다: {op}")
 
 
@@ -122,6 +128,20 @@ class RedisBackend:
                 raise StoreError("저장소 요청이 실패했습니다.", str(item["error"])[:200], 502)
             out.append(item.get("result") if isinstance(item, dict) else item)
         return out
+
+
+    def purge(self, prefix: str) -> int:
+        """prefix로 시작하는 키를 SCAN으로 찾아 모두 지운다. (방문자 번호는 영문·숫자·_- 뿐이라 패턴 문자가 섞이지 않는다)"""
+        cursor, found = "0", []
+        while True:   # 먼저 키를 모두 모은 뒤 지운다 (훑는 도중 지워서 순서가 흔들리는 일이 없게)
+            cursor, keys = self.pipeline([["SCAN", cursor, "MATCH", prefix + "*", "COUNT", 500]])[0]
+            found += keys
+            if str(cursor) == "0":
+                break
+        total = 0
+        for i in range(0, len(found), 200):
+            total += self.pipeline([["DEL", *found[i:i + 200]]])[0]
+        return total
 
 
 def _make_backend():
@@ -161,7 +181,7 @@ def _touch(key: str) -> list:
     return ["EXPIRE", key, TTL]
 
 
-# ── 편의 함수 (쓸 때마다 30일 만료를 다시 건다)
+# ── 편의 함수 (쓸 때마다 24시간 만료를 다시 건다)
 def get(key: str) -> str | None:
     return run(["GET", key])[0]
 
@@ -212,3 +232,12 @@ def rpush(key: str, value: str):
 
 def lrange(key: str) -> list[str]:
     return run(["LRANGE", key, 0, -1])[0] or []
+
+
+def purge_visitor() -> int:
+    """현재 방문자의 저장 데이터(캐릭터, 대화, 기억, 사건, 문서, Skill)를 모두 지운다. 지운 키 개수를 돌려준다."""
+    v = current_visitor.get()
+    if not v:
+        return 0
+    b, prefix = backend(), f"u:{v}:"
+    return b.purge(prefix) if isinstance(b, RedisBackend) else b.pipeline([["PURGE", prefix]])[0]

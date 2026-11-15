@@ -151,7 +151,13 @@ $('#f').addEventListener('submit', async e => {
   } finally { go.disabled = false; go.textContent = '연결 테스트'; }
 });
 
-$('#disconnect').onclick = () => { store.clear(); st.className = 'status'; st.textContent = ''; render(false); key.focus(); };
+$('#disconnect').onclick = async () => {
+  $('#disconnect').disabled = true;
+  await App.disconnect();   // 서버에 저장된 내 대화·기억 등을 지우고 키도 버린다
+  $('#disconnect').disabled = false; st.className = 'status ok'; st.textContent = '연결을 해제하고 저장된 대화와 기억을 지웠어요.';
+  setTimeout(() => { if (st.classList.contains('ok')) { st.className = 'status'; st.textContent = ''; } }, 3500);
+  render(false); key.focus();
+};
 
 // 실습 화면에서 돌아왔을 때는 이미 연결된 상태로 보여 준다 (이 탭에서 연결한 키가 남아 있으면)
 render(App.hasAccess());

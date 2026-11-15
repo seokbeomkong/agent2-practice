@@ -79,7 +79,7 @@
       <div class="conn" title="연결된 키"><i class="dot"></i><span>${esc(maskKey())}</span></div>
       <button class="btn ghost sm" id="disconnect">연결 해제</button>`;
     document.body.prepend(bar);
-    $('#disconnect').onclick = () => { store.clear(); location.href = 'index.html'; };
+    $('#disconnect').onclick = async () => { await disconnect(); location.href = 'index.html'; };
   }
 
   // 실습 머리말(제목/설명/개념/동작 안내)
@@ -94,17 +94,23 @@
 
   // 백엔드 API 호출: 키를 헤더로 붙이고, 실패하면 {error, detail}을 담은 Error를 던진다.
   class ApiError extends Error { constructor(msg, detail) { super(msg); this.detail = detail || ''; } }
-  // 방문자 번호: 이 브라우저를 구분하는 랜덤 번호. 캐릭터, 채팅, 사건, 문서가 이 번호별로 따로 저장된다.
-  const visitorId = (() => {
+  // 방문자 번호: 이 브라우저 "탭"을 구분하는 랜덤 번호. 캐릭터, 채팅, 사건, 문서가 이 번호별로 따로 저장된다.
+  // API 키처럼 sessionStorage에 두므로 새 탭·새 접속은 새 방문자(빈 상태)로 시작하고, 새로고침해도 이어진다.
+  const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, '');
+  let visitorId = (() => {
     try {
-      let v = localStorage.getItem('visitorId');
-      if (!v || !/^[A-Za-z0-9_-]{16,64}$/.test(v)) {
-        v = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, '');
-        localStorage.setItem('visitorId', v);
-      }
+      let v = sessionStorage.getItem('visitorId');
+      if (!v || !/^[A-Za-z0-9_-]{16,64}$/.test(v)) { v = newId(); sessionStorage.setItem('visitorId', v); }
       return v;
     } catch { return 'anon' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
   })();
+  // 연결 해제: 서버에 저장된 내 데이터(대화·기억·사건·문서·Skill)를 모두 지우고, 키와 방문자 번호도 버린다.
+  async function disconnect() {
+    try { await fetch('/api/session/clear', { method: 'POST', headers: { 'X-Visitor-Id': visitorId } }); } catch {}
+    store.clear();
+    try { sessionStorage.removeItem('visitorId'); } catch {}
+    visitorId = newId(); try { sessionStorage.setItem('visitorId', visitorId); } catch {}
+  }
   const MAX_UPLOAD = 4 * 1024 * 1024;   // 서버 요청 본문 한도(약 4.5MB)에 맞춘 파일 크기 한도
   async function api(path, { json, form, method } = {}) {
     const headers = { 'X-Claude-Key': store.get('apiKey'), 'X-Visitor-Id': visitorId };
@@ -133,5 +139,5 @@
     }
   }
 
-  window.App = { visitorId, MAX_UPLOAD, api, readSSE, ApiError, store, hasAccess, maskKey, thumbs, LABS, sleep, $, esc, nowTime, typeInto, mountBar, mountHead };
+  window.App = { get visitorId() { return visitorId; }, disconnect, MAX_UPLOAD, api, readSSE, ApiError, store, hasAccess, maskKey, thumbs, LABS, sleep, $, esc, nowTime, typeInto, mountBar, mountHead };
 })();
