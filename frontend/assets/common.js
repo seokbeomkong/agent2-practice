@@ -51,7 +51,7 @@
       concepts: ['Tool 호출', 'MCP', 'A2A'] },
     { id: 'audit', file: 'lab-audit.html', ch: 'CH5', bg: '#101A3A', short: '보험심사팀',
       title: '보험금 지급 판단 Agent App', desc: '법률, 고객, 경영 전문가 Agent가 서로 피드백을 주고받으며 의견을 조율해 결론을 냅니다.',
-      concepts: ['Supervisor', 'Full-Mesh', 'High Stakes'] }
+      concepts: ['Supervisor', 'Full-Mesh'] }
   ];
 
   const sleep = ms => new Promise(r => setTimeout(r, matchMedia('(prefers-reduced-motion:reduce)').matches ? Math.min(ms, 30) : ms));
@@ -72,7 +72,7 @@
     const bar = document.createElement('header');
     bar.className = 'bar';
     bar.innerHTML = `
-      <a class="back" href="gallery.html" aria-label="실습 목록으로">
+      <a class="back" href="index.html" aria-label="실습 목록으로">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>실습 목록</a>
       ${title ? `<div class="bar-title">${esc(title)} <span class="tag">${esc(ch)}</span></div>` : ''}
       <div class="sp"></div>

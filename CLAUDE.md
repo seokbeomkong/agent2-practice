@@ -48,15 +48,16 @@ CH1(환경 설정), CH2(Agent View 병렬 개발)는 도구 사용법 중심이�
   - Vercel 한도에 맞춘 규칙: 함수 최대 300초(`vercel.json`), 요청 본문 4.5MB → 업로드 4MB 이하, 쓰기 가능한 곳은 임시 폴더뿐(Deep Agents 파일 공간은 실행 중에만 임시 폴더에 펼치고 끝나면 저장소로 되돌림), SSE는 15초마다 ping.
   - 사용 한도(공개 서버 보호): 캐릭터 12, 전문가 8, 전문가당 문서 5개·문서당 글자 60만자, 사건 30, 설치 Skill 1.5MB.
   - 환경변수: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (마켓플레이스 연동 시 `KV_REST_API_URL/TOKEN` 이름도 인식). Vercel에서 저장소가 없으면 파일에 몰래 저장하지 않고 안내 오류를 낸다. 확인: `/api/health`
-- 기존 실습 내용·기능·배치·글꼴·노드/엣지 그래프를 유지하고 **개발 콘솔형 색상만** 적용한다. 기본 스타일은 `frontend/assets/common.css`, 색상 전용 덮어쓰기는 `frontend/assets/console-colors.css`에서 관리한다. 그래프·차트는 "다크 3색"(B안)으로 맞춘다. 색은 Subagent(주황 #c98500), MCP(청록 #199e70), A2A(파랑 #3987e5) 세 가지에만 쓴다. Tool, 요청, 노드는 무채색이고, 일하는 곳은 밝은 회백색(#e5eaf0)으로 켜진다. 이 세 색은 색약 검증을 통과했으며, 선 모양과 라벨로도 함께 구분한다. Dashboard 제품군 색도 같은 3색부터 쓴다. 제목은 "하루만에 익히는 Agent 개발 Demo"다.
-- 흐름: 접속 → API 키 입력·연결 테스트(`/api/key-test`) → 통과해야만 실습 목록 → 실습 화면. 키는 브라우저 `sessionStorage`에만 두고 요청마다 `X-Claude-Key` 헤더로 보낸다. 서버는 저장·로그하지 않는다.
+- 기존 실습 내용·기능·노드/엣지 그래프를 유지하고 **개발 콘솔형 색상만** 적용한다. 기본 스타일은 `frontend/assets/common.css`, 색상 전용 덮어쓰기는 `frontend/assets/console-colors.css`에서 관리한다. 그래프·차트는 "다크 3색"(B안)으로 맞춘다. 색은 Subagent(주황 #c98500), MCP(청록 #199e70), A2A(파랑 #3987e5) 세 가지에만 쓴다. Tool, 요청, 노드는 무채색이고, 일하는 곳은 밝은 회백색(#e5eaf0)으로 켜진다. 이 세 색은 색약 검증을 통과했으며, 선 모양과 라벨로도 함께 구분한다. Dashboard 제품군 색도 같은 3색부터 쓴다. 제목은 "하루만에 익히는 Agent 개발 Demo"다.
+- 흐름: 접속(홈 한 화면) → 오른쪽 위에서 API 키 입력·연결 테스트(`/api/key-test`) → 통과하면 같은 화면의 실습 네 가지(2×2 썸네일)가 켜짐 → 실습 화면. 연결 전에는 실습이 잠겨 있고, 실습 화면에서 돌아오면 이 탭에 남은 키로 연결된 상태로 보인다(연결 해제 가능). 키는 브라우저 `sessionStorage`에만 두고 요청마다 `X-Claude-Key` 헤더로 보낸다. 서버는 저장·로그하지 않는다.
 - 실습 4개 모두 실제 Claude로 동작한다 (모델 `claude-sonnet-5-5`, effort `medium`)
   - CH3 불량 리포트 분석: HTTP 직접 호출(교안 지침: Anthropic SDK 미사용), PDF → 구조화 추출 → 요약 → Dashboard → 스트리밍 챗봇
   - CH4 페르소나 챗봇: Deep Agents. Tool(시각, HTML 생성, Skill 설치/관리), Skill, 캐릭터별 Memory(AGENTS.md), 채팅 기록, 사고 과정 실시간 표시 (모두 방문자별 저장소에 저장)
   - CH4 Orchestration: Orchestrator → Latte(Subagent) → Cat(MCP + Tool) → Emoji(Tool) ↔ Feedback(A2A, 재시도 최대 3번)
   - CH5 보험심사팀: 완전한 Full-Mesh(사람 → Orchestrator → 모든 전문가 Tool, 전문가끼리 모두 A2A). 부른 전문가가 다른 모든 전문가와 A2A로 최대 2번 조율(모두 동의 시 종료), 피드백 중 ask_peer로 직접 질의. Full-Mesh 끄기 시 Supervisor 구조. 사건별 대화(새 사건/목록/상태: 진행 중·완료·보류, 사건별 Agent 기억 저장), 전문가 추가/수정/삭제(실행 중 A2A 서버 동적 등록), 전문가별 참조 문서(PDF/txt/md, 글자만 뽑아 저장) 업로드/삭제 후 read_file로 읽고 답변, 답변 10줄 이내
 - 모든 화면은 넓은 화면(901px 이상)에서 페이지 스크롤 없이 한 화면에 들어가는 구성이다. 실습 화면은 `common.js`의 `mountBar`가 `body.lab`을 붙이고, `common.css`가 창 높이에 맞춘다. 긴 내용은 각 패널 안에서만 스크롤한다. 좁은 화면(모바일)은 기존처럼 세로로 쌓고 스크롤한다.
-- 보험심사팀 화면은 그래프가 오른쪽 전체를 차지한다. 사건 대화와 협의 로그는 그래프 창 오른쪽 아래 버튼으로 여닫는 화면 안 팝업(`#chatPop`, `#logPop`)이다. 닫혀 있을 때 새 내용이 오면 버튼에 빨간 점이 뜬다.
+- 보험심사팀 화면은 오른쪽 위에 그래프, 오른쪽 아래에 사건 대화(왼쪽)와 협의 로그(오른쪽)를 항상 보이는 패널로 나눠 둔다. 팝업·귀퉁이 버튼은 쓰지 않는다(노드 상세 팝업만 그래프 안에 뜬다).
+- 글꼴은 전체 맑은 고딕(`--font`, `--display`)이다. 외부 웹폰트는 불러오지 않는다.
 - 그래프 화면은 서버가 보낸 nodes/links(`/api/orchestra/graph`, `/api/audit/graph`)로만 그리고, 실행 이벤트(SSE)를 순서대로 재생한다.
 - 노드를 클릭하면 그 Agent가 받은 요청·결과 전체가 팝업으로 열리고, 다시 클릭하면 닫힌다(`detail` 이벤트). 자동 말풍선은 쓰지 않는다.
 - Orchestration 앱은 Latte/Cat/Emoji/Feedback을 켜고 끌 수 있다(꺼진 Agent는 서버에서도 빠짐, Emoji를 끄면 Feedback도 꺼짐).
@@ -82,7 +83,7 @@ CH1(환경 설정), CH2(Agent View 병렬 개발)는 도구 사용법 중심이�
 - `agents/audit/`: `orchestrator.py`(그래프·실행), `experts.py`(전문가 실행·Full-Mesh 조율·참조 문서·A2A 등록), `store.py`(Agent·설정·사건·문서 저장)
 - `data/store.json`: 로컬 실행 때만 생기는 저장 파일 (지우면 기본 캐릭터·기본 전문가 3명으로 다시 시작)
 - `sample_reports/`: 교안 UNIT 2 형식의 2페이지 불량 리포트 PDF 5건 (`scripts/make_reports.py`로 생성)
-- `frontend/`: `index.html`(키 입력), `gallery.html`(실습 목록), `lab-*.html`(실습), `assets/common.css`, `assets/common.js`, `assets/graph.js`(Agent 그래프)
+- `frontend/`: `index.html`(홈: 키 입력 + 실습 목록), `gallery.html`(예전 주소를 index로 보내는 안내), `lab-*.html`(실습), `assets/common.css`, `assets/common.js`, `assets/graph.js`(Agent 그래프)
 
 ## 실행
 

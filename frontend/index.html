@@ -4,98 +4,122 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>하루만에 익히는 Agent 개발 Demo</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/common.css">
 <style>
-  .gate{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:space-between;gap:48px;padding:clamp(24px,5vw,64px)}
-  .gate .brand{font:800 20px var(--display)}
-  form{margin-top:32px;max-width:640px}
-  label{display:block;font-weight:600;margin-bottom:8px}
-  .field{display:flex;gap:8px}
-  .keybox{flex:1;min-width:0;display:flex;border:2px solid var(--ink);border-radius:10px;background:var(--white);overflow:hidden}
-  .keybox:focus-within{border-color:var(--cobalt);box-shadow:0 0 0 3px rgba(43,76,255,.2)}
-  .keybox input{flex:1;min-width:0;border:0;padding:13px 14px;background:transparent;font-family:var(--mono);font-size:15px;outline:none}
-  .keybox button{border:0;background:transparent;padding:0 14px;font-weight:600;color:var(--muted);cursor:pointer}
+  /* 한 화면 홈: 오른쪽 위에서 API 키를 연결하고, 같은 화면에서 실습 네 가지를 바로 고른다 */
+  body{min-height:100vh}
+  .top{position:relative;display:flex;align-items:center;gap:16px 24px;flex-wrap:wrap;padding:14px clamp(16px,3vw,40px);border-bottom:2px solid var(--ink)}
+  .top .brand{font-family:var(--display);font-weight:800;font-size:clamp(1.4rem,2.6vw,2.2rem);line-height:1.15;letter-spacing:-.01em}
+  .top .sp{flex:1}
+  .keyform{display:flex;align-items:center;gap:8px;min-width:0}
+  .keybox{display:flex;align-items:center;width:clamp(220px,28vw,380px);border:2px solid var(--ink);border-radius:6px;background:var(--white);box-shadow:3px 3px 0 var(--shadow,var(--ink));overflow:hidden}
+  .keybox:focus-within{border-color:var(--cobalt)}
+  .keybox input{flex:1;min-width:0;border:0;padding:9px 12px;background:transparent;font-family:var(--font);font-size:15px;outline:none}
+  .keybox button{border:0;background:transparent;padding:0 12px;font-weight:700;color:var(--muted);cursor:pointer;align-self:stretch}
   .keybox button:hover{color:var(--ink)}
-  .hint{margin-top:14px;font-size:14px;color:var(--muted)}
-  .status{margin-top:16px;min-height:24px;font-size:15px}
-  .status.err{padding:12px 14px;border-left:4px solid var(--coral);background:var(--white);border-radius:0 8px 8px 0}
-  .status.err b{display:block;margin-bottom:2px}
-  .status.err code{display:block;margin-top:6px;font:500 13px var(--mono);color:var(--muted);overflow-wrap:anywhere}
-  .status.ok{color:var(--mint);font-weight:600}
+  .linked{display:flex;align-items:center;gap:10px;font-weight:700}
+  .linked .dot{flex:none}
+  .linked span{font-family:var(--font)}
+  [hidden]{display:none!important}
 
-  /* 잠금 → 점등: 이 페이지의 주인공 */
-  .rack{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-  .slot{border-radius:12px;overflow:hidden;background:var(--white);border:1px solid var(--line)}
-  .slot .pic{aspect-ratio:16/10;filter:grayscale(1) contrast(.8);opacity:.38;transition:filter .6s,opacity .6s}
-  .slot .pic svg{width:100%;height:100%;display:block}
-  .slot p{padding:9px 12px;font-size:14px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:8px}
-  .slot p::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--line);transition:background .4s}
-  .rack.lit .slot .pic{filter:none;opacity:1}
-  .rack.lit .slot p{color:var(--ink)}
-  .rack.lit .slot p::before{background:var(--mint)}
-  .rack.lit .slot:nth-child(2) .pic,.rack.lit .slot:nth-child(2) p::before{transition-delay:.25s}
-  .rack.lit .slot:nth-child(3) .pic,.rack.lit .slot:nth-child(3) p::before{transition-delay:.5s}
-  .rack.lit .slot:nth-child(4) .pic,.rack.lit .slot:nth-child(4) p::before{transition-delay:.75s}
-  @media(max-width:720px){.rack{grid-template-columns:repeat(2,1fr)}.field{flex-direction:column}}
-  /* 제목: 서비스 이름이 이 화면의 헤드라인이다 */
-  :root .gate .brand{font-family:var(--display);font-weight:400!important;font-size:clamp(2rem,min(6.2vw,9.5vh),5rem);line-height:1.1;letter-spacing:0}
-  /* 한 화면 구성: 넓은 화면에서는 위쪽(제목·키 입력) 아래 남는 높이를 2×2 썸네일이 꽉 채운다.
-     썸네일 상자 가로 폭은 남는 높이에서 계산해(cqh) 16:10 비율이 찌그러지지 않게 한다. */
+  /* 연결 결과 안내: 키 입력 바로 아래, 오른쪽 위에 뜬다 */
+  .status{position:absolute;right:clamp(16px,3vw,40px);top:calc(100% + 10px);z-index:30;max-width:min(520px,calc(100% - 32px));
+          padding:10px 14px;border:2px solid var(--ink);border-left-width:8px;border-radius:6px;background:var(--white);box-shadow:4px 4px 0 var(--shadow,var(--ink));font-size:14px}
+  .status:empty{display:none}
+  .status.err{border-left-color:var(--coral)} .status.ok{border-left-color:var(--mint);font-weight:700}
+  .status b{display:block}
+  .status code{display:block;margin-top:4px;font:500 12px var(--font);color:var(--muted);overflow-wrap:anywhere}
+
+  /* 실습 네 가지: 연결 전에는 잠겨 있고(흐리게), 연결되면 켜져서 누를 수 있다 */
+  .home{padding:clamp(14px,2.4vh,28px) clamp(16px,3vw,40px)}
+  .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:0 auto}
+  .tile{display:flex;flex-direction:column;min-height:0;text-decoration:none;color:inherit;background:var(--white);cursor:default}
+  .tile .thumb{aspect-ratio:16/10;overflow:hidden;filter:grayscale(1) contrast(.8);opacity:.38;transition:filter .6s,opacity .6s}
+  .tile .thumb svg{width:100%;height:100%;display:block}
+  .tile .foot{flex:none;display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:2px solid var(--ink);font-weight:700}
+  .tile .foot b{font-weight:700;color:var(--muted);transition:color .4s}
+  .tile .foot .go{margin-left:auto;opacity:0;transition:opacity .4s}
+  .tiles.lit .tile{cursor:pointer}
+  .tiles.lit .thumb{filter:none;opacity:1}
+  .tiles.lit .foot b{color:var(--ink)}
+  .tiles.lit .foot .go{opacity:1}
+  .tiles.lit .tile:nth-child(2) .thumb{transition-delay:.2s}
+  .tiles.lit .tile:nth-child(3) .thumb{transition-delay:.4s}
+  .tiles.lit .tile:nth-child(4) .thumb{transition-delay:.6s}
+  .tiles.lit .tile:hover,.tiles.lit .tile:focus-visible{transform:translate(-3px,-3px);box-shadow:8px 8px 0 var(--ink)}
+  .tile.nudge{animation:nudge .35s}
+  @keyframes nudge{30%{transform:translateX(-6px)}60%{transform:translateX(6px)}}
+
+  /* 한 화면 구성: 넓은 화면에서는 위쪽 줄 아래 남는 높이를 2×2가 채운다.
+     타일 폭은 남는 높이에서 계산해(cqh) 썸네일 16:10 비율이 찌그러지지 않게 한다. */
   @media(min-width:721px){
-    .gate{height:100vh;height:100dvh;min-height:0;overflow:hidden;gap:clamp(12px,3vh,32px);padding:clamp(20px,4vh,56px) clamp(24px,5vw,64px)}
-    .gate .intro{margin-top:clamp(10px,2.5vh,32px)!important}
-    .gate .status{min-height:0;margin-top:8px}
-    .rackwrap{flex:1;min-height:0;container-type:size}
-    .rack{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;height:100%;align-content:end;
-          width:min(100%,calc((100cqh - 20px - 2*46px) / 2 * 1.6 * 2 + 20px))}
+    body{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+    .top{flex:none}
+    .home{flex:1;min-height:0;container-type:size}
+    .tiles{height:100%;grid-template-rows:repeat(2,minmax(0,1fr));align-content:center;
+           width:min(100%,calc((100cqh - 20px - 2*46px) / 2 * 1.6 * 2 + 20px));max-height:100%}
+    .tile .thumb{aspect-ratio:auto;flex:1;min-height:0}
+    .tile .thumb svg{height:100%}
+    .tiles{align-content:stretch}
   }
-  /* 가로가 넓은 화면: 제목·키 입력은 왼쪽, 2×2 썸네일은 오른쪽에 두어 썸네일을 가장 크게 쓴다 */
-  @media(min-width:1000px){
-    .gate{flex-direction:row;align-items:stretch;justify-content:flex-start;gap:clamp(28px,4vw,72px)}
-    .gate > div:first-child{flex:0 0 clamp(340px,34vw,640px);display:flex;flex-direction:column;justify-content:center;min-width:0}
-    :root .gate .brand{font-size:clamp(2.2rem,min(4.2vw,8vh),4.6rem)}
-    .gate .intro{margin-top:clamp(24px,5vh,56px)!important}
-    .rackwrap{height:100%}
-    .rack{align-content:center;margin-left:auto}
-    .field{flex-direction:column;align-items:stretch}
-    .field .btn{justify-content:center}
+  @media(max-width:720px){
+    .keyform{flex-wrap:wrap;width:100%}
+    .keybox{flex:1;width:auto}
+    .top .sp{display:none}
   }
 </style>
 <link rel="stylesheet" href="assets/console-colors.css">
 </head>
 <body>
-<main class="gate">
-  <div>
-    <div class="brand">하루만에 익히는 Agent 개발 Demo</div>
-    <div class="intro" style="margin-top:clamp(32px,8vh,88px)">
-      <form id="f" novalidate>
-        <label for="key">Claude API 키</label>
-        <div class="field">
-          <div class="keybox">
-            <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-..." aria-describedby="st">
-            <button type="button" id="eye" aria-label="키 표시">표시</button>
-          </div>
-          <button class="btn blue" id="go" type="submit">연결 테스트</button>
-        </div>
-        <p class="hint">키는 이 탭에서만 쓰이고, 탭을 닫으면 사라집니다.</p>
-        <div id="st" class="status" role="status" aria-live="polite"></div>
-      </form>
+<header class="top">
+  <div class="brand">하루만에 익히는 Agent 개발 Demo</div>
+  <div class="sp"></div>
+  <form id="f" class="keyform" novalidate>
+    <label for="key" class="sr">Claude API 키</label>
+    <div class="keybox">
+      <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Claude API 키 (sk-ant-...)" aria-describedby="st">
+      <button type="button" id="eye" aria-label="키 표시">표시</button>
     </div>
-  </div>
-  <div class="rackwrap"><div class="rack" id="rack" aria-label="잠겨 있는 실습 네 가지"></div></div>
+    <button class="btn blue" id="go" type="submit">연결 테스트</button>
+  </form>
+  <div class="linked" id="linked" hidden><i class="dot"></i><span id="mask"></span><button type="button" class="btn ghost sm" id="disconnect">연결 해제</button></div>
+  <div id="st" class="status" role="status" aria-live="polite"></div>
+</header>
+
+<main class="home">
+  <h1 class="sr">실습 목록</h1>
+  <div class="tiles" id="tiles"></div>
 </main>
 
 <script src="assets/common.js"></script>
 <script>
-const { LABS, thumbs, store, sleep, $, esc } = App;
-// 접속하면 항상 키 입력부터 시작한다. (이전에 연결한 키도 지운다)
-store.clear();
+const { LABS, thumbs, store, $, esc } = App;
+const key = $('#key'), st = $('#st'), go = $('#go'), tiles = $('#tiles');
 
-$('#rack').innerHTML = LABS.map(l => `<div class="slot"><div class="pic">${thumbs[l.id]}</div><p>${esc(l.short)}</p></div>`).join('');
+// 실습 네 가지: 서버가 아니라 LABS 목록으로 그린다. 연결되기 전에는 누를 수 없다.
+tiles.innerHTML = LABS.map(l => `<a class="tile panel" data-file="${l.file}" aria-disabled="true" tabindex="-1">
+  <div class="thumb">${thumbs[l.id]}</div>
+  <div class="foot"><span class="tag">${l.ch}</span><b>${esc(l.title)}</b>
+    <svg class="go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></div></a>`).join('');
 
-const key = $('#key'), st = $('#st'), go = $('#go');
+// 연결 상태를 화면에 반영한다: 켜짐이면 실습 링크가 열리고, 꺼짐이면 키 입력 칸이 보인다
+function render(on) {
+  tiles.classList.toggle('lit', on);
+  $('#f').hidden = on; $('#linked').hidden = !on;
+  $('#mask').textContent = on ? App.maskKey() : '';
+  tiles.querySelectorAll('.tile').forEach(t => {
+    if (on) { t.href = t.dataset.file; t.removeAttribute('aria-disabled'); t.tabIndex = 0; }
+    else { t.removeAttribute('href'); t.setAttribute('aria-disabled', 'true'); t.tabIndex = -1; }
+  });
+}
+
+// 잠겨 있을 때 실습을 누르면 키 입력으로 안내한다
+tiles.addEventListener('click', e => {
+  const t = e.target.closest('.tile'); if (!t || App.hasAccess()) return;
+  e.preventDefault(); t.classList.remove('nudge'); void t.offsetWidth; t.classList.add('nudge');
+  fail('API 키를 먼저 연결해 주세요.', '오른쪽 위 입력칸에 Claude API 키를 넣고 연결 테스트를 누르면 실습 네 가지가 켜집니다.'); key.focus();
+});
+
 $('#eye').onclick = e => {
   const show = key.type === 'password';
   key.type = show ? 'text' : 'password';
@@ -108,13 +132,6 @@ function fail(title, detail) {
   st.innerHTML = `<b>${esc(title)}</b>${detail ? `<code>${esc(detail)}</code>` : ''}`;
 }
 
-// 연결 성공/데모 진입 → 썸네일이 차례로 켜진 뒤 실습 목록으로 이동
-async function unlock() {
-  $('#rack').classList.add('lit');
-  await sleep(1700);
-  location.href = 'gallery.html';
-}
-
 // 서버(/api/key-test)가 Claude API를 1회 호출해 키를 확인한다. 키는 서버에 저장되지 않는다.
 $('#f').addEventListener('submit', async e => {
   e.preventDefault();
@@ -125,14 +142,20 @@ $('#f').addEventListener('submit', async e => {
   try {
     store.set('apiKey', k);
     await App.api('/api/key-test', { method: 'POST' });
-    st.className = 'status ok'; st.textContent = '연결되었습니다.';
-    unlock();
+    key.value = ''; render(true);
+    st.className = 'status ok'; st.textContent = '연결되었습니다. 실습을 골라 주세요.';
+    setTimeout(() => { if (st.classList.contains('ok')) { st.className = 'status'; st.textContent = ''; } }, 3500);
   } catch (err) {
-    store.clear();
+    store.clear(); render(false);
     fail(err.message, err.detail);
   } finally { go.disabled = false; go.textContent = '연결 테스트'; }
 });
 
+$('#disconnect').onclick = () => { store.clear(); st.className = 'status'; st.textContent = ''; render(false); key.focus(); };
+
+// 실습 화면에서 돌아왔을 때는 이미 연결된 상태로 보여 준다 (이 탭에서 연결한 키가 남아 있으면)
+render(App.hasAccess());
+if (!App.hasAccess()) key.focus();
 </script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 :root{
   --paper:#E4DDFF; --white:#fff; --ink:#14101F; --muted:#4A4560; --line:#14101F;
   --cobalt:#E0218A; --cobalt-d:#B8176F; --gold:#FFD400; --mint:#00A86B; --coral:#E8301F;
-  --font:'Noto Sans KR','Malgun Gothic',sans-serif; --display:'Black Han Sans','Noto Sans KR',sans-serif;
+  --font:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif; --display:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
   --mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
   --on-ink:#fff; --on-accent:#fff; --concl-bg:#FFD400; --concl-fg:#14101F; --concl-h:#14101F;
   --k1:#E0218A; --k2:#FFD400; --k3:#14101F; --k4:#fff; --k5:#00A86B; --k6:#FF5A2E; --k7:#F8CFE6; --k8:#FFB3DA; --k9:#A79FC7; --k10:#7A6FA8;
@@ -53,7 +53,8 @@ button,input,textarea{font:inherit;color:inherit}
 @media (min-width:901px){
   body.lab{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
   body.lab > .bar{flex:none;position:static}
-  body.lab > .lab-head{flex:none;padding:10px 20px}
+  body.lab > .lab-head{flex:none;padding:6px 20px 8px;align-items:center}
+  body.lab > .lab-head h1{font-size:1.45rem}
   body.lab > .layout{flex:1;min-height:0;padding-bottom:20px;align-items:stretch;grid-template-rows:minmax(0,1fr)}
   body.lab .layout .panel{display:flex;flex-direction:column;min-height:0}
   body.lab .layout .panel-h{flex:none}
@@ -121,9 +122,9 @@ svg [fill="#9AA3C4"]{fill:var(--k9)}
 svg [stroke="#5A6BA8"]{stroke:var(--k10)}
 
 /* 디자인: 팝 스티커 — 라벤더 바탕, 굵은 검정 테두리, 평평한 그림자 */
-:root h1,:root h2,:root h3{font-weight:400!important;letter-spacing:0}
+:root h1,:root h2,:root h3{font-weight:800!important;letter-spacing:-.01em}
 :root .bar{border-bottom:2px solid var(--ink)}
-:root .bar .brand,:root .gate .brand{font-weight:400!important}
+:root .bar .brand,:root .gate .brand{font-weight:800!important}
 :root .panel,:root .slot,:root .tile{border:2px solid var(--ink);border-radius:8px;box-shadow:5px 5px 0 var(--ink);overflow:hidden}
 :root .panel-h{background:var(--gold);border-bottom:2px solid var(--ink);font-weight:700}
 :root .tile{transition:transform .15s,box-shadow .15s}
@@ -173,7 +174,7 @@ svg [stroke="#5A6BA8"]{stroke:var(--k10)}
 .agraph .node .shadow{fill:var(--ink)}
 .agraph .node .body{fill:#fff;stroke:var(--ink);stroke-width:3;transition:fill .25s}
 .agraph .node .band{fill:none;stroke-width:6;opacity:.9}
-.agraph .node .name{font:400 17px var(--display);text-anchor:middle;dominant-baseline:central;fill:var(--ink)}
+.agraph .node .name{font:800 17px var(--display);text-anchor:middle;dominant-baseline:central;fill:var(--ink)}
 .agraph .node .name.long{font:800 13px var(--font);letter-spacing:-.02em}
 .agraph .node .role{font:500 12px var(--font);text-anchor:middle;fill:var(--muted);paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round}
 .agraph .node .ring{fill:none;stroke:var(--mint);stroke-width:4;opacity:0}

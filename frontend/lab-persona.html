@@ -4,15 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>페르소나 챗봇</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/common.css">
 <style>
   .layout{display:grid;grid-template-columns:250px minmax(0,1fr) 300px;gap:20px;padding:0 20px 32px;align-items:start}
   .pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;padding:12px}
   .pcard{border:2px solid var(--ink);border-radius:10px;background:#fff;padding:10px 6px 8px;text-align:center;cursor:pointer;display:grid;justify-items:center;gap:6px;font-weight:700;font-size:14px}
   .pcard[aria-current=true]{background:var(--ink);color:#fff;box-shadow:3px 3px 0 var(--cobalt)}
-  .av{width:42px;height:42px;border-radius:50%;border:2px solid var(--ink);display:grid;place-items:center;font:400 18px var(--display);color:#14101F;flex:none}
+  .av{width:42px;height:42px;border-radius:50%;border:2px solid var(--ink);display:grid;place-items:center;font:800 18px var(--display);color:#14101F;flex:none}
   .av.sm{width:30px;height:30px;font-size:14px}
   .sect{padding:10px 16px 4px;font-size:13px;font-weight:700;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
   .chats{list-style:none;margin:0;padding:0 8px 8px;max-height:300px;overflow:auto}
