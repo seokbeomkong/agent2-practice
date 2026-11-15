@@ -206,24 +206,36 @@ let caseId = null, AGENTS = [], editId = null;
 const DETAILS = {}, WORKING = new Set();
 
 // ── 그래프: 사람 → Orchestrator, 첫 전문가는 가운데, 나머지는 오른쪽 열 (전문가 3명이면 스크린샷 모양)
+// 배치 원칙: 어떤 선도 다른 노드를 지나가거나 스치지 않고, 가능하면 선끼리 교차하지 않게 한다.
+//  - 1~2명: 한 줄(위·아래), 3명: 법률(첫 전문가)을 Orchestrator·나머지 둘이 이루는 삼각형 안쪽에 두면 어떤 선도 교차하지 않는다
+//  - 4명 이상: Orchestrator를 가운데 두고 전문가를 둘레(타원)에 고르게 놓는다. 전문가끼리 모두 잇는 선은 어떻게 놓아도 교차하므로,
+//    노드에 닿는 선은 graph.js가 바깥으로 휘어 피하고, 라벨 자리가 없으면 라벨을 숨긴다.
 function meshLayout(nodes, links, W, H) {
-  const pos = {}, cy = H / 2, k = W / 780, ex = nodes.filter(n => n.kind === 'expert');
-  pos.human = { x: 70 * k, y: cy }; pos.orch = { x: 245 * k, y: cy };
-  if (ex.length === 1) pos[ex[0].id] = { x: 520 * k, y: cy };
-  else if (ex.length === 2) { pos[ex[0].id] = { x: 560 * k, y: cy - 95 }; pos[ex[1].id] = { x: 560 * k, y: cy + 95 }; }
-  else {
-    // 가운데 전문가는 조금 왼쪽, 나머지는 오른쪽 열에 위아래로 넓게 펴서 Orchestrator에서 가는 선이 가운데 노드를 스치지 않게 한다
-    pos[ex[0].id] = { x: 455 * k, y: cy };
-    const rest = ex.slice(1), gap = Math.min(330, (H - 130) / Math.max(rest.length - 1, 1));
-    rest.forEach((n, i) => pos[n.id] = { x: 700 * k, y: cy + (i - (rest.length - 1) / 2) * gap });
+  const pos = {}, cy = H / 2, k = W / 780, ex = nodes.filter(n => n.kind === 'expert'), n = ex.length;
+  if (n >= 4) {   // Orchestrator를 가운데 두고 전문가를 둘레(타원)에 같은 간격으로 놓는다. 그러면 Orchestrator에서 뻗는 선이 어떤 노드도 지나지 않는다
+    const cx = 400, rx = 260, ry = (H - 100) / 2;
+    pos.human = { x: 60, y: cy }; pos.orch = { x: cx, y: cy };
+    // 타원의 둘레를 따라 같은 길이 간격으로(위아래가 좁아 보이지 않게), 사람 → Orchestrator 선과 겹치지 않게 반 칸 비켜서 놓는다
+    const ring = []; let len = 0;
+    for (let j = 0; j <= 720; j++) {
+      const a = Math.PI + (2 * Math.PI * j) / 720, p = { x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }, q = ring[ring.length - 1];
+      if (q) len += Math.hypot(p.x - q.p.x, p.y - q.p.y);
+      ring.push({ p, len });
+    }
+    ex.forEach((e, i) => { pos[e.id] = (ring.find(r => r.len >= (i + .5) * len / n) || ring[ring.length - 1]).p; });
+    return pos;
   }
+  pos.human = { x: 70 * k, y: cy }; pos.orch = { x: 245 * k, y: cy };
+  if (n === 1) pos[ex[0].id] = { x: 520 * k, y: cy };
+  else if (n === 2) { pos[ex[0].id] = { x: 560 * k, y: cy - 95 }; pos[ex[1].id] = { x: 560 * k, y: cy + 95 }; }
+  else { pos[ex[0].id] = { x: 508 * k, y: cy }; pos[ex[1].id] = { x: 640 * k, y: cy - 100 }; pos[ex[2].id] = { x: 640 * k, y: cy + 100 }; }
   return pos;
 }
 async function loadGraph() {
   GRAPH = await (await api('/api/audit/graph')).json();
   NODES = {}; KIND = {};
-  // 전문가가 많으면 오른쪽 열 노드가 겹치지 않도록 그래프 세로 길이를 늘린다 (화면에는 비율대로 줄어들어 들어간다)
-  const rest = Math.max(GRAPH.nodes.filter(n => n.kind === 'expert').length - 1, 0), H = Math.max(300, (rest - 1) * 100 + 130);
+  // 전문가가 많으면 노드가 겹치지 않도록 그래프 세로 길이를 늘린다 (화면에는 비율대로 줄어들어 들어간다)
+  const n = GRAPH.nodes.filter(n => n.kind === 'expert').length, H = n >= 5 ? 400 : n >= 4 ? 340 : 300;
   G = AgentGraph.create($('#g'), GRAPH, { width: 760, height: H, layout: meshLayout, onNodeClick: togglePopup });
   GRAPH.nodes.forEach(n => { NODES[n.id] = n; COLORS[n.id] = n.color; DETAILS[n.id] = DETAILS[n.id] || []; G.setBadge(n.id, DETAILS[n.id].length); });
   GRAPH.links.forEach(l => { KIND[l.from + '>' + l.to] = KIND[l.to + '>' + l.from] = l.kind; });

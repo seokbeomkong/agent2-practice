@@ -29,6 +29,23 @@
     return pos;
   }
 
+  // 연결선 경로: 기본은 직선. 다른 노드와 가깝게(반지름+12px 안) 지나가면 노드 바깥쪽으로 휘어진 곡선(2차 베지어)으로 바꾼다.
+  // 돌려주는 값: 휘어야 하면 제어점 {x, y}, 직선이면 null
+  function route(N, l, W, H) {
+    const a = N[l.from], b = N[l.to], others = Object.values(N).filter(n => n.id !== a.id && n.id !== b.id);
+    const pt = (c, t) => { const u = 1 - t; return c ? { x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y } : { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; };
+    const clearance = c => { let m = 1e9; for (let i = 1; i < 24; i++) { const p = pt(c, i / 24); for (const n of others) m = Math.min(m, Math.hypot(p.x - n.x, p.y - n.y) - n.r); } return m; };
+    let best = null, bestScore = clearance(null);
+    if (!others.length || bestScore >= 12) return null;
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    for (const d of [30, 45, 60, 80, 100, 125, 150, 180, 220]) for (const sgn of [1, -1]) {
+      const c = { x: mx + nx * d * 2 * sgn, y: my + ny * d * 2 * sgn }, m = pt(c, .5);   // 제어점을 2배 지점에 두면 곡선은 d만큼 휜다
+      if (m.x < 6 || m.x > W - 6 || m.y < 6 || m.y > H - 6) continue;
+      const score = clearance(c); if (score >= 12) return c; if (score > bestScore) { best = c; bestScore = score; }
+    }
+    return best;
+  }
+
   function create(svg, data, opt = {}) {
     const W = opt.width || 780, H = opt.height || 420;
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
@@ -37,15 +54,29 @@
     const N = {}; data.nodes.forEach((n, i) => { N[n.id] = { ...n, ...pos[n.id], r: n.kind === 'hub' ? 50 : n.kind === 'human' ? 34 : 42, color: n.color || PALETTE[i % PALETTE.length] }; });
     const el = (tag, attrs, parent = svg) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.append(e); return e; };
 
-    data.links.forEach(l => { const a = N[l.from], b = N[l.to]; el('line', { class: `edge ${l.kind}`, id: `e-${l.from}-${l.to}`, x1: a.x, y1: a.y, x2: b.x, y2: b.y }); });
+    // 연결선(직선, 또는 노드를 피해 휘어진 곡선)과 그 위의 한 점을 구하는 함수
+    const paths = {};
+    const at = (key, t) => { const { a, b, c } = paths[key], u = 1 - t;   // t: 0이면 from, 1이면 to
+      return c ? { x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y } : { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; };
+    data.links.forEach(l => {
+      const a = N[l.from], b = N[l.to], c = route(N, l, W, H); paths[`${l.from}>${l.to}`] = { a, b, c };
+      if (c) el('path', { class: `edge ${l.kind}`, id: `e-${l.from}-${l.to}`, d: `M${a.x} ${a.y} Q${c.x} ${c.y} ${b.x} ${b.y}` });
+      else el('line', { class: `edge ${l.kind}`, id: `e-${l.from}-${l.to}`, x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+    });
     // 연결 방식 라벨(Tool, A2A, MCP 등)은 각 연결선 가운데에 작게 붙인다. 선 색·모양과 아래 범례로도 구분한다
+    const placed = [];   // 이미 놓은 라벨의 자리(서로 겹치지 않게)
     data.links.forEach(l => {
       const a = N[l.from], b = N[l.to];
       const w = [...l.label].reduce((s, c) => s + (c.charCodeAt(0) > 255 ? 11 : 6.8), 0) + 14;
       // 라벨이 노드에 가려지지 않게: 선의 가운데부터 시작해, 어떤 노드와도 겹치지 않는 지점을 선을 따라 찾는다
       const clear = (x, y) => Object.values(N).every(n => Math.hypot(Math.max(Math.abs(x - n.x) - w / 2, 0), Math.max(Math.abs(y - n.y) - 10, 0)) > n.r + 3);
-      const t = [.5, .42, .58, .35, .65, .3, .7, .25, .75].find(t => clear(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)) ?? .5;
-      const g = el('g', { class: `pill ${l.kind}`, transform: `translate(${a.x + (b.x - a.x) * t} ${a.y + (b.y - a.y) * t})` });
+      // 가운데에서 가까운 순서로 훑어 겹치지 않는 자리를 찾고, 어디에도 없으면(연결이 빽빽할 때) 라벨을 숨긴다.
+      // 선 모양·색과 아래 범례로 연결 종류를 알 수 있다. (라벨 순서는 연결 순서와 같아야 하므로 요소는 항상 만든다)
+      const key = `${l.from}>${l.to}`, ts = Array.from({ length: 19 }, (_, i) => .5 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * .04).filter(t => t > .1 && t < .9);
+      const free = (x, y) => clear(x, y) && placed.every(q => Math.abs(x - q.x) > (w + q.w) / 2 + 3 || Math.abs(y - q.y) > 24);
+      const crowded = data.links.filter(x => x.kind === l.kind).length > 6;   // 같은 종류 연결이 많으면 라벨은 생략(선 모양·색과 범례로 구분)
+      const t = crowded ? null : ts.find(t => { const p = at(key, t); return free(p.x, p.y); }), p = at(key, t ?? .5); if (t != null) placed.push({ x: p.x, y: p.y, w });
+      const g = el('g', { class: `pill ${l.kind}`, transform: `translate(${p.x} ${p.y})` }); if (t == null) g.style.display = 'none';
       el('rect', { x: -w / 2, y: -10, width: w, height: 20, rx: 10 }, g); el('text', {}, g).textContent = l.label;
     });
     svg.parentElement.querySelector(':scope > .glegend')?.remove();
@@ -107,14 +138,14 @@
       },
       // 노란 점이 연결선을 따라 이동 (꼬리 3개가 뒤따른다). 연결이 없으면 바로 끝낸다.
       travel(from, to, ms = 650) {
-        const s = N[from], d = N[to], line = edge(from, to);
-        if (!s || !d || !line) return Promise.resolve();
+        const s = N[from], d = N[to], line = edge(from, to), key = paths[`${from}>${to}`] ? `${from}>${to}` : `${to}>${from}`, fwd = key === `${from}>${to}`;
+        if (!s || !d || !line || !paths[key]) return Promise.resolve();
         line.classList.add('on'); [pk, ...trail].forEach(c => c.setAttribute('visibility', 'visible'));
         return new Promise(res => {
           const t0 = performance.now();
           const f = t => {
             const k = reduce() ? 1 : Math.min(1, (t - t0) / ms), e = k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
-            [pk, ...trail].forEach((c, i) => { const q = Math.max(0, e - i * .06); c.setAttribute('cx', s.x + (d.x - s.x) * q); c.setAttribute('cy', s.y + (d.y - s.y) * q); });
+            [pk, ...trail].forEach((c, i) => { const q = Math.max(0, e - i * .06), p = at(key, fwd ? q : 1 - q); c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); });
             if (k < 1) requestAnimationFrame(f); else { [pk, ...trail].forEach(c => { c.setAttribute('cx', -50); c.setAttribute('visibility', 'hidden'); }); line.classList.remove('on'); res(); }
           };
           requestAnimationFrame(f);
@@ -142,5 +173,5 @@
     };
   }
 
-  window.AgentGraph = { create, player, layeredLayout };
+  window.AgentGraph = { create, player, layeredLayout, route };
 })();

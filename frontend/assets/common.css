@@ -175,7 +175,7 @@ svg [stroke="#5A6BA8"]{stroke:var(--k10)}
 .agraph .node .body{fill:#fff;stroke:var(--ink);stroke-width:3;transition:fill .25s}
 .agraph .node .band{fill:none;stroke-width:6;opacity:.9}
 .agraph .node .name{font:800 17px var(--display);text-anchor:middle;dominant-baseline:central;fill:var(--ink)}
-.agraph .node .name.long{font:800 13px var(--font);letter-spacing:-.02em}
+.agraph .node .name.long{font:800 12px var(--font);letter-spacing:-.02em}
 .agraph .node .role{font:500 12px var(--font);text-anchor:middle;fill:var(--muted);paint-order:stroke;stroke:#fff;stroke-width:6px;stroke-linejoin:round}
 .agraph .node .ring{fill:none;stroke:var(--mint);stroke-width:4;opacity:0}
 .agraph .node.on .body{fill:#B9F2D7}
