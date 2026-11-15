@@ -45,7 +45,7 @@
       concepts: ['AI Application', 'Claude API'] },
     { id: 'persona', file: 'lab-persona.html', ch: 'CH4', bg: '#FFBE1F', short: '페르소나 챗봇',
       title: '페르소나 챗봇', desc: '캐릭터를 고르거나 직접 만들어 대화합니다. 현재 시각 Tool, HTML 카드 Tool, 대화 기억이 동작하는 모습을 볼 수 있어요.',
-      concepts: ['Deep Agents', 'Tool', 'Skill', 'Memory'] },
+      concepts: ['Deep Agents', '시스템 프롬프트', 'Tool', 'Skill', 'Memory'] },
     { id: 'orchestra', file: 'lab-orchestra.html', ch: 'CH4', bg: '#0F8E6D', short: 'Agent 협업 그래프',
       title: 'Agent Orchestration 학습 앱', desc: '문장 하나가 Latte, Cat, Emoji, Feedback Agent를 거치며 바뀌는 과정을 그래프와 로그로 따라갑니다.',
       concepts: ['Tool 호출', 'MCP', 'A2A'] },

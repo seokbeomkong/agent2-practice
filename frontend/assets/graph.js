@@ -40,8 +40,12 @@
     data.links.forEach(l => { const a = N[l.from], b = N[l.to]; el('line', { class: `edge ${l.kind}`, id: `e-${l.from}-${l.to}`, x1: a.x, y1: a.y, x2: b.x, y2: b.y }); });
     // 연결 방식 라벨(Tool, A2A, MCP 등)은 각 연결선 가운데에 작게 붙인다. 선 색·모양과 아래 범례로도 구분한다
     data.links.forEach(l => {
-      const a = N[l.from], b = N[l.to], g = el('g', { class: `pill ${l.kind}`, transform: `translate(${(a.x + b.x) / 2} ${(a.y + b.y) / 2})` });
+      const a = N[l.from], b = N[l.to];
       const w = [...l.label].reduce((s, c) => s + (c.charCodeAt(0) > 255 ? 11 : 6.8), 0) + 14;
+      // 라벨이 노드에 가려지지 않게: 선의 가운데부터 시작해, 어떤 노드와도 겹치지 않는 지점을 선을 따라 찾는다
+      const clear = (x, y) => Object.values(N).every(n => Math.hypot(Math.max(Math.abs(x - n.x) - w / 2, 0), Math.max(Math.abs(y - n.y) - 10, 0)) > n.r + 3);
+      const t = [.5, .42, .58, .35, .65, .3, .7, .25, .75].find(t => clear(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)) ?? .5;
+      const g = el('g', { class: `pill ${l.kind}`, transform: `translate(${a.x + (b.x - a.x) * t} ${a.y + (b.y - a.y) * t})` });
       el('rect', { x: -w / 2, y: -10, width: w, height: 20, rx: 10 }, g); el('text', {}, g).textContent = l.label;
     });
     svg.parentElement.querySelector(':scope > .glegend')?.remove();
@@ -69,8 +73,8 @@
       const bx = n.x + n.r * 0.72, by = n.y - n.r * 0.72, badge = el('g', { class: 'nbadge', transform: `translate(${bx} ${by})` }, g);
       el('circle', { r: 12 }, badge); el('text', {}, badge);
     });
-    const trail = [0, 1, 2].map(i => el('circle', { class: 'trail', r: 6 - i * 1.5, cx: -50, cy: -50 }));
-    const pk = el('circle', { class: 'packet', r: 9, cx: -50, cy: -50 });
+    const trail = [0, 1, 2].map(i => el('circle', { class: 'trail', r: 6 - i * 1.5, cx: -50, cy: -50, visibility: 'hidden' }));
+    const pk = el('circle', { class: 'packet', r: 9, cx: -50, cy: -50, visibility: 'hidden' });
     const bubbles = el('g', {});
     const edge = (a, b) => svg.querySelector(`#e-${a}-${b}`) || svg.querySelector(`#e-${b}-${a}`);
     const reduce = () => matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -105,13 +109,13 @@
       travel(from, to, ms = 650) {
         const s = N[from], d = N[to], line = edge(from, to);
         if (!s || !d || !line) return Promise.resolve();
-        line.classList.add('on');
+        line.classList.add('on'); [pk, ...trail].forEach(c => c.setAttribute('visibility', 'visible'));
         return new Promise(res => {
           const t0 = performance.now();
           const f = t => {
             const k = reduce() ? 1 : Math.min(1, (t - t0) / ms), e = k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
             [pk, ...trail].forEach((c, i) => { const q = Math.max(0, e - i * .06); c.setAttribute('cx', s.x + (d.x - s.x) * q); c.setAttribute('cy', s.y + (d.y - s.y) * q); });
-            if (k < 1) requestAnimationFrame(f); else { [pk, ...trail].forEach(c => c.setAttribute('cx', -50)); line.classList.remove('on'); res(); }
+            if (k < 1) requestAnimationFrame(f); else { [pk, ...trail].forEach(c => { c.setAttribute('cx', -50); c.setAttribute('visibility', 'hidden'); }); line.classList.remove('on'); res(); }
           };
           requestAnimationFrame(f);
         });

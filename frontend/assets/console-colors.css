@@ -73,8 +73,10 @@
 :root .badge{border-color:var(--line);color:var(--on-accent)}
 :root .badge.subagent{background:#2d3547}
 :root .badge.request{background:var(--white)}
+/* 어두운 바탕의 배지는 밝은 글자로 (요청·Tool·Subagent는 배경이 어둡다) */
+:root .badge.request,:root .badge.tool,:root .badge.subagent{color:var(--ink)}
 :root .stages span{border-color:var(--line);background:var(--white)}
-:root .stages span.cur{color:var(--on-accent)}
+:root .stages span.cur{background:var(--cobalt);color:var(--on-accent);border-color:var(--cobalt)}
 :root .cases .open[aria-current=true]{border-color:var(--line);background:var(--white);box-shadow:3px 3px 0 var(--shadow)}
 :root .stt{border-color:var(--line);background:var(--white)}
 :root .stt.s0{background:#453e29}
